@@ -1,0 +1,46 @@
+{
+  "name": "grok-build-desktop",
+  "version": "0.1.0",
+  "description": "Grok Build desktop workspace",
+  "author": "Grok Build Desktop",
+  "main": "main.cjs",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "verify": "node scripts/verify.cjs",
+    "preview": "node scripts/serve.cjs",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "ai.x.grok.build.desktop.community",
+    "productName": "Grok Build",
+    "asar": true,
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "renderer/**/*",
+      "build/icon.png"
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": ["nsis", "portable"],
+      "artifactName": "Grok-Build-Desktop-${version}-${arch}.${ext}"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "target": "dmg",
+      "category": "public.app-category.developer-tools"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": ["AppImage", "deb"],
+      "category": "Development"
+    }
+  }
+}

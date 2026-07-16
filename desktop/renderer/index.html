@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Grok Build</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <svg class="svg-sprite" aria-hidden="true">
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" /></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7.5h6l2-2h9v13h-17z" /></symbol>
+      <symbol id="i-git" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2" /><circle cx="6" cy="18" r="2" /><circle cx="18" cy="12" r="2" /><path d="M6 8v8M8 7c5 0 3 5 8 5" /></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2" /><path d="M9 4v16" /></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1" /></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19 13.5v-3l-2-.7-.7-1.7.9-1.9-2.1-2.1-1.9.9-1.7-.7-.7-2h-3l-.7 2-1.7.7-1.9-.9-2.1 2.1.9 1.9-.7 1.7-2 .7v3l2 .7.7 1.7-.9 1.9 2.1 2.1 1.9-.9 1.7.7.7 2h3l.7-2 1.7-.7 1.9.9 2.1-2.1-.9-1.9.7-1.7z" /></symbol>
+      <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m8.5 12.5 6.8-6.8a3 3 0 0 1 4.2 4.2l-8.9 8.9a5 5 0 0 1-7.1-7.1l8.4-8.4" /></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="m5 12 14-7-4.5 14-3-5.5zM5 12h6.5" /></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor" stroke="none" /></symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="m7 9 3 3-3 3M13 15h4" /></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4 4 10-10" /></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M16 8V5H5v11h3" /></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></symbol>
+      <symbol id="i-command" viewBox="0 0 24 24"><path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z" /></symbol>
+      <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m6 10 6-6 6 6M12 4v16" /></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8a7 7 0 0 1 11.9-1l2 5M4 12l2 5a7 7 0 0 0 11.9-1" /></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13M10 10v6M14 10v6" /></symbol>
+    </svg>
+
+    <div class="app-shell" id="appShell">
+      <header class="titlebar">
+        <div class="titlebar__drag">
+          <button class="brand" id="brandButton" title="Grok Build">
+            <span class="grok-mark" aria-hidden="true"><i></i><i></i></span>
+            <span class="brand__word">GROK</span><span class="brand__product">BUILD</span>
+          </button>
+          <div class="titlebar__trail" id="windowTrail"><span>grok-build-kunkun</span><b>/</b><span>新会话</span></div>
+        </div>
+        <nav class="titlebar__actions" aria-label="窗口操作">
+          <button class="icon-button title-action" id="themeButton" title="切换主题"><svg><use href="#i-sun"/></svg></button>
+          <button class="icon-button title-action" id="settingsButton" title="设置"><svg><use href="#i-settings"/></svg></button>
+          <span class="window-spacer"></span>
+          <button class="window-button" data-window="min" aria-label="最小化"><span></span></button>
+          <button class="window-button window-button--max" data-window="max" aria-label="最大化"><span></span></button>
+          <button class="window-button window-button--close" data-window="close" aria-label="关闭"><span></span></button>
+        </nav>
+      </header>
+
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar__top">
+          <button class="new-thread-button" id="newThreadButton"><svg><use href="#i-plus"/></svg><span>新建任务</span><kbd>⌘N</kbd></button>
+          <button class="icon-button" id="searchButton" title="搜索会话"><svg><use href="#i-search"/></svg></button>
+        </div>
+
+        <button class="workspace-card" id="workspaceButton">
+          <span class="workspace-card__icon"><svg><use href="#i-folder"/></svg></span>
+          <span class="workspace-card__copy"><b id="workspaceName">grok-build-kunkun</b><small id="workspacePath">E:\interesting\grok-build-kunkun</small></span>
+          <svg class="workspace-card__chevron"><use href="#i-chevron"/></svg>
+        </button>
+
+        <div class="sidebar-section sidebar-section--grow">
+          <div class="section-label"><span>任务</span><button class="text-button" id="clearThreadsButton">整理</button></div>
+          <div class="thread-list" id="threadList"></div>
+        </div>
+
+        <div class="sidebar__footer">
+          <button class="usage-card" id="runtimeCard">
+            <span class="runtime-orb"><i></i></span>
+            <span><b id="runtimeTitle">检查 Grok runtime</b><small id="runtimeMeta">正在连接本地代理…</small></span>
+            <svg><use href="#i-chevron"/></svg>
+          </button>
+          <button class="profile-row">
+            <span class="avatar">K</span><span><b>Local workspace</b><small>Desktop session</small></span><svg><use href="#i-more"/></svg>
+          </button>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <div class="workspace-toolbar">
+          <div class="toolbar-group">
+            <button class="icon-button sidebar-toggle" id="sidebarToggle" title="侧栏"><svg><use href="#i-panel"/></svg></button>
+            <button class="branch-pill"><svg><use href="#i-git"/></svg><span>main</span><i></i></button>
+          </div>
+          <div class="toolbar-group toolbar-group--right">
+            <span class="session-state" id="sessionState"><i></i>准备就绪</span>
+            <button class="icon-button" id="inspectorToggle" title="任务脉络"><svg><use href="#i-command"/></svg></button>
+          </div>
+        </div>
+
+        <section class="conversation" id="conversation" aria-live="polite">
+          <div class="conversation__content" id="messages"></div>
+          <button class="scroll-bottom" id="scrollBottom" title="滚动到底部"><svg><use href="#i-arrow-up"/></svg></button>
+        </section>
+
+        <section class="composer-dock">
+          <div class="composer" id="composer">
+            <div class="attachment-list" id="attachmentList"></div>
+            <textarea id="promptInput" rows="1" placeholder="让 Grok 构建、解释或修复任何内容…" aria-label="消息"></textarea>
+            <div class="composer__bottom">
+              <div class="composer__tools">
+                <button class="composer-tool" id="attachButton" title="添加文件"><svg><use href="#i-paperclip"/></svg></button>
+                <button class="model-picker" id="modelButton"><span id="modelLabel">自动模型</span><svg><use href="#i-chevron"/></svg></button>
+                <button class="effort-picker" id="effortButton"><span id="effortLabel">高思考</span></button>
+              </div>
+              <div class="composer__submit">
+                <span class="composer-hint" id="composerHint"><kbd>Enter</kbd> 发送</span>
+                <button class="send-button" id="sendButton" aria-label="发送"><svg><use href="#i-send"/></svg></button>
+              </div>
+            </div>
+          </div>
+          <div class="dock-meta"><span>Grok 会在 <button id="cwdButton">grok-build-kunkun</button> 中工作</span><span><i></i>本地执行</span></div>
+        </section>
+      </main>
+
+      <aside class="inspector" id="inspector">
+        <div class="inspector__head"><div><small>ACTIVITY MAP</small><h2>任务脉络</h2></div><button class="icon-button" id="inspectorClose"><svg><use href="#i-x"/></svg></button></div>
+        <div class="signal-map" aria-hidden="true"><span></span><span></span><span></span><span></span><i></i></div>
+        <div class="inspector-section">
+          <div class="section-label"><span>本轮</span><small id="turnDuration">—</small></div>
+          <ol class="activity-timeline" id="activityTimeline">
+            <li class="is-done"><i><svg><use href="#i-check"/></svg></i><span><b>载入工作区</b><small>读取 Git 与项目上下文</small></span></li>
+            <li class="is-active"><i></i><span><b>等待指令</b><small>准备调用 Grok Build</small></span></li>
+          </ol>
+        </div>
+        <div class="inspector-section inspector-section--files">
+          <div class="section-label"><span>上下文</span><small id="fileCount">0 FILES</small></div>
+          <div class="context-empty" id="contextFiles"><svg><use href="#i-folder"/></svg><span>附件和修改过的文件会显示在这里</span></div>
+        </div>
+        <div class="inspector__foot"><span class="permission-dot"></span><div><b>工具许可</b><small id="permissionLabel">每次询问</small></div><button class="switch" id="approvalSwitch" role="switch" aria-checked="false"><i></i></button></div>
+      </aside>
+    </div>
+
+    <div class="palette-backdrop" id="paletteBackdrop" hidden>
+      <section class="palette" role="dialog" aria-modal="true" aria-label="快速操作">
+        <div class="palette__input"><svg><use href="#i-search"/></svg><input id="paletteInput" placeholder="搜索任务或输入命令…" /><kbd>ESC</kbd></div>
+        <div class="palette__results" id="paletteResults"></div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="settingsBackdrop" hidden>
+      <section class="modal settings-modal" role="dialog" aria-modal="true">
+        <header><div><small>GROK BUILD</small><h2>桌面设置</h2></div><button class="icon-button" data-close-modal><svg><use href="#i-x"/></svg></button></header>
+        <div class="settings-row"><span><b>自动批准工具</b><small>允许 Grok 直接执行本地命令和文件修改</small></span><button class="switch" id="settingsApproval" role="switch" aria-checked="false"><i></i></button></div>
+        <div class="settings-row"><span><b>界面主题</b><small>跟随系统、深色或浅色</small></span><select id="themeSelect"><option value="system">跟随系统</option><option value="dark">深色</option><option value="light">浅色</option></select></div>
+        <div class="settings-row"><span><b>Grok Runtime</b><small id="settingsRuntimePath">自动检测</small></span><button class="secondary-button" id="refreshRuntime"><svg><use href="#i-refresh"/></svg>重新检测</button></div>
+        <footer><span>桌面端通过 streaming-json 与当前 Grok TUI runtime 共享会话。</span><button class="primary-button" data-close-modal>完成</button></footer>
+      </section>
+    </div>
+
+    <div class="toast-stack" id="toastStack"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

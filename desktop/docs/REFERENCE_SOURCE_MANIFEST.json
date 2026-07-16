@@ -1,0 +1,20 @@
+{
+  "capturedAt": "2026-07-16T14:28:32.3621750+08:00",
+  "packageName": "OpenAI.Codex",
+  "packageVersion": "26.707.9981.0",
+  "packageFullName": "OpenAI.Codex_26.707.9981.0_x64__2p2nqsd0c76g0",
+  "packageInstallLocation": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.707.9981.0_x64__2p2nqsd0c76g0",
+  "rendererProduct": "Codex",
+  "rendererVersion": "26.707.72221",
+  "codexBuildNumber": "5307",
+  "asarSha256": "e286d538971d7b4648692b244d80b0b1e9d227d29564275ad46f6653280d4094",
+  "mainCssFile": "app-CsojUw70.css",
+  "mainCssSha256": "8265ad60026b94982ac8287387beb8e0d2324d9b2b1466e114c23447be1d965e",
+  "cssBundleCount": 47,
+  "jsBundleCount": 5166,
+  "extractedTokenCount": 1376,
+  "extractedSelectorCount": 6218,
+  "extractedKeyframeCount": 68,
+  "extractedFontFaceCount": 36,
+  "note": "Static copy; original WindowsApps installation was not modified."
+}

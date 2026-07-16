@@ -26,6 +26,18 @@ Protocol (ACP).
 
 ![Grok Build TUI](https://media.x.ai/v1/website/universe-tui-screenshot-6f7a0837.png)
 
+## Grok Build Desktop
+
+This tree also contains a native desktop workspace in [`desktop/`](desktop/README.md). It connects to the same Grok agent runtime through streaming JSON, resumes multi-turn sessions, and adds workspace history, attachments, model/effort controls, tool-permission controls, themes, and a Grok-specific activity map.
+
+![Grok Build Desktop](desktop/docs/grok-desktop-dark.png)
+
+```powershell
+cd desktop
+npm install
+npm start
+```
+
 **Learn more about Grok Build at [x.ai/cli](https://x.ai/cli)**
 
 This repository contains the Rust source for the `grok` CLI/TUI and its agent
