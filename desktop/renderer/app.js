@@ -133,7 +133,7 @@
 
   function welcomeMarkup() {
     return `<div class="welcome">
-      <div class="welcome-mark"><i></i></div>
+      <div class="welcome-mark" aria-hidden="true"></div>
       <h1>构建下一件重要的事。</h1>
       <p>Grok Build 已连接到你的本地工作区。描述目标，它会理解代码、执行工具并验证结果。</p>
       <div class="quick-actions">
@@ -150,7 +150,7 @@
       return `<div class="tool-card"><div class="tool-card__head"><svg><use href="#i-terminal"/></svg><b>${escapeHtml(message.title || "Grok runtime")}</b><small>${escapeHtml(message.status || "activity")}</small></div><div class="tool-card__body">${escapeHtml(message.text)}</div></div>`;
     }
     const assistant = message.role === "assistant";
-    const identity = assistant ? "G" : "YOU";
+    const identity = assistant ? '<span class="grok-mark" aria-hidden="true"></span>' : "YOU";
     return `<article class="message message--${assistant ? "assistant" : "user"}" data-message-id="${message.id}">
       <div class="message__meta"><span class="message__identity">${identity}</span><b>${assistant ? "Grok" : "你"}</b><span>${formatTime(message.createdAt)}</span></div>
       <div class="message__body">${assistant ? markdown(message.text) : escapeHtml(message.text)}</div>

@@ -7,7 +7,7 @@ const required = [
   "main.cjs", "preload.cjs", "package.json", "renderer/index.html",
   "renderer/tokens.css", "renderer/app.css", "renderer/app.js",
   "renderer/assets/GrokSans-Regular.woff2", "renderer/assets/GrokSans-Medium.woff2",
-  "build/icon.png"
+  "renderer/assets/grok-mark.png", "build/icon.png"
 ];
 for (const file of required) {
   const target = path.join(root, file);
@@ -33,8 +33,12 @@ for (const selector of [".app-shell", ".sidebar", ".conversation", ".composer", 
 for (const token of ["--accent", "--surface", "--text", "--line", "--shadow-composer"]) {
   if (!css.includes(token)) throw new Error(`Design token missing: ${token}`);
 }
-for (const feature of ["scheduleStreamingRender", "requestAnimationFrame", "openPicker", "picker-popover", "dock-status--workspace", "dock-status--local"]) {
+for (const feature of ["scheduleStreamingRender", "requestAnimationFrame", "openPicker", "picker-popover", "dock-status--workspace", "dock-status--local", "grokLogoShimmer", "assets/grok-mark.png"]) {
   if (!`${html}\n${js}\n${css}`.includes(feature)) throw new Error(`Desktop interaction missing: ${feature}`);
+}
+const iconGenerator = fs.readFileSync(path.join(root, "scripts/generate-icon.py"), "utf8");
+if (!iconGenerator.includes("logo07.txt") || !iconGenerator.includes("logo24.txt") || !iconGenerator.includes("BRAILLE_DOTS")) {
+  throw new Error("Desktop icon is no longer derived from the canonical TUI braille logo");
 }
 for (const removed of ['id="composerHint"', "profile-row", "Local workspace"]) {
   if (`${html}\n${js}`.includes(removed)) throw new Error(`Removed desktop element returned: ${removed}`);

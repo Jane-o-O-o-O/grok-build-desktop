@@ -50,9 +50,16 @@ kbd { border: 0; border-radius: 4px; background: var(--surface-hover); color: va
 .brand { display: flex; align-items: center; gap: 8px; height: 100%; padding: 0 15px; background: transparent; letter-spacing: .08em; }
 .brand__word { font-size: 12px; font-weight: 700; }
 .brand__product { margin-left: -5px; color: var(--text-3); font-size: 9px; font-weight: 500; letter-spacing: .16em; }
-.grok-mark { position: relative; display: inline-block; width: 19px; height: 19px; transform: rotate(-8deg); }
-.grok-mark i { position: absolute; inset: 2px 8px; display: block; border-radius: 50%; background: var(--text); transform: rotate(39deg); }
-.grok-mark i:last-child { inset: 3px 3px 10px 3px; border-radius: 1px; background: var(--accent); transform: rotate(-15deg); box-shadow: 0 0 12px rgba(var(--accent-rgb), .5); }
+.grok-mark, .welcome-mark {
+  display: inline-block;
+  flex: none;
+  background: linear-gradient(135deg, var(--text-3) 18%, var(--text) 43%, var(--text-2) 58%, var(--text-3) 82%);
+  background-size: 260% 260%;
+  -webkit-mask: url("assets/grok-mark.png") center / contain no-repeat;
+  mask: url("assets/grok-mark.png") center / contain no-repeat;
+  animation: grokLogoShimmer 4s ease-in-out infinite;
+}
+.grok-mark { width: 21px; height: 21px; }
 .titlebar__trail { display: flex; gap: 8px; align-items: center; min-width: 0; color: var(--text-3); font-size: 11px; }
 .titlebar__trail span { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .titlebar__trail b { color: var(--text-4); font-weight: 400; }
@@ -145,11 +152,7 @@ kbd { border: 0; border-radius: 4px; background: var(--surface-hover); color: va
 .conversation { position: relative; z-index: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; scroll-behavior: smooth; }
 .conversation__content { width: min(var(--conversation-width), calc(100% - 52px)); min-height: 100%; margin: 0 auto; padding: 46px 0 70px; }
 .welcome { min-height: calc(100vh - 300px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; animation: reveal .55s var(--ease-out) both; }
-.welcome-mark { position: relative; width: 72px; height: 72px; margin-bottom: 25px; }
-.welcome-mark::before, .welcome-mark::after { content: ""; position: absolute; inset: 8px 30px; border-radius: 50%; background: var(--text); transform: rotate(38deg); }
-.welcome-mark::after { inset: 18px 12px 43px; background: var(--accent); transform: rotate(-17deg); box-shadow: 0 0 24px rgba(var(--accent-rgb), .5); }
-.welcome-mark i { position: absolute; inset: 0; border: 1px solid var(--line-accent); border-radius: 50%; animation: orbit 9s linear infinite; }
-.welcome-mark i::after { content: ""; position: absolute; left: 4px; top: 12px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 9px rgba(var(--accent-rgb), .9); }
+.welcome-mark { width: 96px; height: 96px; margin-bottom: 24px; }
 .welcome h1 { margin: 0 0 8px; font-size: clamp(25px, 3vw, 35px); line-height: 1.15; letter-spacing: -.035em; font-weight: 500; }
 .welcome > p { max-width: 480px; margin: 0; color: var(--text-3); font-size: 13px; }
 .quick-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: min(520px, 100%); margin-top: 34px; text-align: left; }
@@ -162,8 +165,8 @@ kbd { border: 0; border-radius: 4px; background: var(--surface-hover); color: va
 .message { margin-bottom: 36px; animation: messageIn .34s var(--ease-out) both; user-select: text; }
 .message__meta { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; color: var(--text-3); font-size: 10px; user-select: none; }
 .message__identity { display: grid; place-items: center; width: 21px; height: 21px; border-radius: 6px; background: var(--surface-3); color: var(--text-2); font-size: 9px; font-weight: 600; }
-.message--assistant .message__identity { position: relative; background: transparent; color: var(--accent); }
-.message--assistant .message__identity::before { content: ""; position: absolute; width: 4px; height: 17px; border-radius: 50%; background: currentColor; transform: rotate(40deg); }
+.message--assistant .message__identity { background: transparent; }
+.message--assistant .message__identity .grok-mark { width: 19px; height: 19px; }
 .message__meta b { color: var(--text-2); font-size: 11px; font-weight: 500; }
 .message__body { padding-left: 30px; color: var(--text); font-size: 14px; line-height: 1.7; }
 .message--user .message__body { display: inline-block; margin-left: 30px; padding: 10px 13px; max-width: calc(100% - 30px); border: 1px solid var(--line); border-radius: 3px 13px 13px 13px; background: var(--surface-2); line-height: 1.55; white-space: pre-wrap; }
@@ -265,6 +268,7 @@ button.dock-status:hover { border-color: var(--line-accent); background: var(--s
 @keyframes signalPulse{0%,100%{opacity:.45;transform:scale(.75)}50%{opacity:1;transform:scale(1.15)}}
 @keyframes thinking{0%,70%,100%{opacity:.25;transform:translateY(0)}35%{opacity:1;transform:translateY(-3px)}}
 @keyframes orbit{to{transform:rotate(360deg)}}
+@keyframes grokLogoShimmer{0%{background-position:0 100%}32%{background-position:100% 0}100%{background-position:100% 0}}
 @keyframes reveal{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
 @keyframes messageIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}

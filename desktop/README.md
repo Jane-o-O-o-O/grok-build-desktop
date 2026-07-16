@@ -33,7 +33,7 @@ npm run pack
 关键界面采用独立的 Grok 视觉语言：
 
 - 黑色宇宙底色与 signal-cyan 信号色，而非通用蓝色品牌方案；
-- 由斜向双轨和轨道构成的 Grok 标记；
+- 直接沿用 TUI `views/welcome/logo.rs` 选择的 Braille 标志族：界面运行时使用 `logo07.txt`，桌面图标从同轮廓的高分辨率 `logo24.txt` 解码生成，并复用 TUI 的灰色到主文字色斜向 shimmer；
 - Activity Map、信号节点和任务脉络检查器；
 - 工程工作区、Git 分支、runtime 在线状态和工具许可作为一级信息；
 - Chromium renderer 保持 `contextIsolation`、sandbox 和无 Node 注入。
