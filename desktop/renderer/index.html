@@ -74,9 +74,6 @@
             <span><b id="runtimeTitle">检查 Grok runtime</b><small id="runtimeMeta">正在连接本地代理…</small></span>
             <svg><use href="#i-chevron"/></svg>
           </button>
-          <button class="profile-row">
-            <span class="avatar">K</span><span><b>Local workspace</b><small>Desktop session</small></span><svg><use href="#i-more"/></svg>
-          </button>
         </div>
       </aside>
 
@@ -108,12 +105,14 @@
                 <button class="effort-picker" id="effortButton"><span id="effortLabel">高思考</span></button>
               </div>
               <div class="composer__submit">
-                <span class="composer-hint" id="composerHint"><kbd>Enter</kbd> 发送</span>
                 <button class="send-button" id="sendButton" aria-label="发送"><svg><use href="#i-send"/></svg></button>
               </div>
             </div>
           </div>
-          <div class="dock-meta"><span>Grok 会在 <button id="cwdButton">grok-build-kunkun</button> 中工作</span><span><i></i>本地执行</span></div>
+          <div class="dock-meta">
+            <button class="dock-status dock-status--workspace" id="cwdButton" title="切换工作区"><svg><use href="#i-folder"/></svg><span>Grok 工作区</span><b id="cwdLabel">grok-build-kunkun</b><svg class="dock-status__chevron"><use href="#i-chevron"/></svg></button>
+            <span class="dock-status dock-status--local"><i></i><span>本地 Runtime</span><b>已连接</b></span>
+          </div>
         </section>
       </main>
 

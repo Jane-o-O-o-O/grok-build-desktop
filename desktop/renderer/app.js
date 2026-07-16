@@ -27,6 +27,8 @@
   let startedAt = 0;
   let durationTimer = null;
   let runtimeModels = [{ id: "auto", label: "自动模型" }];
+  let streamRenderFrame = null;
+  let pickerPopover = null;
 
   function loadState() {
     try {
@@ -165,6 +167,26 @@
     updateWindowTrail();
   }
 
+  // Streaming chunks can arrive only a few characters apart. Rebuilding the whole
+  // conversation for every chunk resets layout, selection and hover state, which
+  // presents as a full-page flash. Keep the message nodes stable and update only
+  // the active answer, at most once per animation frame.
+  function scheduleStreamingRender() {
+    if (streamRenderFrame) return;
+    const conversation = $("#conversation");
+    const followOutput = conversation.scrollHeight - conversation.scrollTop - conversation.clientHeight < 140;
+    streamRenderFrame = requestAnimationFrame(() => {
+      streamRenderFrame = null;
+      if (!activeAssistantMessage) return;
+      const article = $(`[data-message-id="${activeAssistantMessage.id}"]`);
+      const body = article?.querySelector(".message__body");
+      if (!body) return;
+      body.innerHTML = markdown(activeAssistantMessage.text);
+      bindMessageBody(body);
+      if (followOutput) conversation.scrollTop = conversation.scrollHeight;
+    });
+  }
+
   function renderThreads() {
     const target = $("#threadList");
     if (!state.threads.length) {
@@ -239,7 +261,7 @@
     const name = basename(state.cwd);
     $("#workspaceName").textContent = name;
     $("#workspacePath").textContent = state.cwd;
-    $("#cwdButton").textContent = name;
+    $("#cwdLabel").textContent = name;
     $("#modelLabel").textContent = state.modelLabel;
     $("#effortLabel").textContent = state.effortLabel;
   }
@@ -262,8 +284,12 @@
       const message = activeThread()?.messages.find((item) => item.id === id);
       if (message) { await navigator.clipboard.writeText(message.text); toast("已复制", "回复已复制到剪贴板"); }
     }));
-    $$(".copy-code").forEach((button) => button.addEventListener("click", async () => { await navigator.clipboard.writeText(button.closest(".code-block").querySelector("pre").textContent); toast("已复制", "代码块已复制"); }));
-    $$(".message__body a").forEach((link) => link.addEventListener("click", (event) => { if (api) { event.preventDefault(); api.openExternal(link.href); } }));
+    $$(".message__body").forEach(bindMessageBody);
+  }
+
+  function bindMessageBody(body) {
+    $$(".copy-code", body).forEach((button) => button.addEventListener("click", async () => { await navigator.clipboard.writeText(button.closest(".code-block").querySelector("pre").textContent); toast("已复制", "代码块已复制"); }));
+    $$("a", body).forEach((link) => link.addEventListener("click", (event) => { if (api) { event.preventDefault(); api.openExternal(link.href); } }));
   }
 
   function setRunning(running) {
@@ -272,7 +298,6 @@
     $("#sessionState").lastChild.textContent = running ? "Grok 正在工作" : "准备就绪";
     button.classList.toggle("is-stop", running);
     button.innerHTML = `<svg><use href="#${running ? "i-stop" : "i-send"}"/></svg>`;
-    $("#composerHint").innerHTML = running ? "点击停止当前任务" : "<kbd>Enter</kbd> 发送";
     if (running) {
       startedAt = Date.now();
       clearInterval(durationTimer);
@@ -320,7 +345,7 @@
     const timer = setInterval(() => {
       if (!activeRun) return clearInterval(timer);
       activeAssistantMessage.text += response.slice(index, index + 5); index += 5;
-      renderMessages(); scrollToBottom();
+      scheduleStreamingRender();
       if (index >= response.length) { clearInterval(timer); finishRun("预览完成"); }
     }, 35);
   }
@@ -329,7 +354,7 @@
     if (!activeRun || event.runId !== activeRun) return;
     if (event.type === "text") {
       activeAssistantMessage.text += event.data || "";
-      renderMessages(); scrollToBottom();
+      scheduleStreamingRender();
     } else if (event.type === "thought") {
       activeAssistantMessage.thought = (activeAssistantMessage.thought || "") + (event.data || "");
     } else if (event.type === "diagnostic") {
@@ -392,6 +417,35 @@
   function openSettings() { $("#settingsBackdrop").hidden = false; }
   function closeSettings() { $("#settingsBackdrop").hidden = true; }
 
+  function closePicker() {
+    pickerPopover?.remove();
+    pickerPopover = null;
+    $$(".is-picker-open").forEach((button) => button.classList.remove("is-picker-open"));
+  }
+
+  function openPicker(anchor, { eyebrow, title, items, selected, onSelect }) {
+    closePicker();
+    anchor.classList.add("is-picker-open");
+    const popover = document.createElement("section");
+    popover.className = "picker-popover";
+    popover.setAttribute("role", "listbox");
+    popover.innerHTML = `<header><small>${escapeHtml(eyebrow)}</small><b>${escapeHtml(title)}</b></header><div class="picker-popover__items">${items.map((item) => `<button class="picker-option ${item.id === selected ? "is-selected" : ""}" role="option" aria-selected="${item.id === selected}" data-picker-id="${escapeHtml(item.id)}"><span class="picker-option__radio"><i></i></span><span class="picker-option__copy"><b>${escapeHtml(item.label)}</b><small>${escapeHtml(item.description || "")}</small></span>${item.badge ? `<em>${escapeHtml(item.badge)}</em>` : ""}</button>`).join("")}</div>`;
+    document.body.appendChild(popover);
+    pickerPopover = popover;
+    const anchorRect = anchor.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    const left = Math.max(10, Math.min(anchorRect.left, innerWidth - popoverRect.width - 10));
+    const top = Math.max(10, anchorRect.top - popoverRect.height - 9);
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+    popover.querySelectorAll("[data-picker-id]").forEach((button) => button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const item = items.find((candidate) => candidate.id === button.dataset.pickerId);
+      if (item) onSelect(item);
+      closePicker();
+    }));
+  }
+
   function toast(title, detail) {
     const node = document.createElement("div"); node.className = "toast";
     node.innerHTML = `<svg><use href="#i-check"/></svg><span><b>${escapeHtml(title)}</b><small>${escapeHtml(detail)}</small></span>`;
@@ -436,8 +490,30 @@
     $("#themeButton").addEventListener("click", () => { state.theme = resolvedTheme() === "dark" ? "light" : "dark"; saveState(); updateLayout(); });
     $("#themeSelect").addEventListener("change", (event) => { state.theme = event.target.value; saveState(); updateLayout(); });
     $("#refreshRuntime").addEventListener("click", detectRuntime); $("#runtimeCard").addEventListener("click", openSettings);
-    $("#modelButton").addEventListener("click", () => { const index = runtimeModels.findIndex((item) => item.id === state.model); const next = runtimeModels[(Math.max(index, 0) + 1) % runtimeModels.length]; state.model = next.id; state.modelLabel = next.label; saveState(); updateWorkspace(); toast("模型已切换", next.label); });
-    $("#effortButton").addEventListener("click", () => { const options = [["low","低思考"],["medium","中思考"],["high","高思考"]]; const index = options.findIndex(([id]) => id === state.effort); const next = options[(index + 1) % options.length]; [state.effort, state.effortLabel] = next; saveState(); updateWorkspace(); });
+    $("#modelButton").addEventListener("click", (event) => {
+      event.stopPropagation();
+      openPicker(event.currentTarget, {
+        eyebrow: "MODEL ROUTING",
+        title: "选择模型",
+        selected: state.model,
+        items: runtimeModels.map((item, index) => ({ ...item, description: item.id === "auto" ? "跟随 Grok Runtime 的默认模型" : "固定使用这个模型处理后续任务", badge: index === 0 ? "推荐" : "" })),
+        onSelect: (item) => { state.model = item.id; state.modelLabel = item.label; saveState(); updateWorkspace(); toast("模型已切换", item.label); }
+      });
+    });
+    $("#effortButton").addEventListener("click", (event) => {
+      event.stopPropagation();
+      openPicker(event.currentTarget, {
+        eyebrow: "REASONING EFFORT",
+        title: "选择思考档位",
+        selected: state.effort,
+        items: [
+          { id: "low", label: "低思考", description: "快速回答，适合简单修改与查询" },
+          { id: "medium", label: "中思考", description: "速度与分析深度之间的平衡", badge: "均衡" },
+          { id: "high", label: "高思考", description: "更深入地规划、实现并验证复杂任务" }
+        ],
+        onSelect: (item) => { state.effort = item.id; state.effortLabel = item.label; saveState(); updateWorkspace(); toast("思考档位已切换", item.label); }
+      });
+    });
     $("#clearThreadsButton").addEventListener("click", () => toast("任务已整理", "历史记录保留在本机"));
     $("#conversation").addEventListener("scroll", () => { const el = $("#conversation"); $("#scrollBottom").classList.toggle("is-visible", el.scrollHeight - el.scrollTop - el.clientHeight > 160); });
     $("#scrollBottom").addEventListener("click", scrollToBottom);
@@ -447,8 +523,9 @@
       if (mod && event.key.toLowerCase() === "k") { event.preventDefault(); openPalette(); }
       if (mod && event.key.toLowerCase() === "n") { event.preventDefault(); createThread(); }
       if (mod && event.key === ",") { event.preventDefault(); openSettings(); }
-      if (event.key === "Escape") { closePalette(); closeSettings(); }
+      if (event.key === "Escape") { closePicker(); closePalette(); closeSettings(); }
     });
+    document.addEventListener("click", (event) => { if (pickerPopover && !pickerPopover.contains(event.target)) closePicker(); });
     matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => { if (state.theme === "system") updateLayout(); });
   }
 

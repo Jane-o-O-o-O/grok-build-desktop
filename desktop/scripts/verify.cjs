@@ -33,5 +33,11 @@ for (const selector of [".app-shell", ".sidebar", ".conversation", ".composer", 
 for (const token of ["--accent", "--surface", "--text", "--line", "--shadow-composer"]) {
   if (!css.includes(token)) throw new Error(`Design token missing: ${token}`);
 }
+for (const feature of ["scheduleStreamingRender", "requestAnimationFrame", "openPicker", "picker-popover", "dock-status--workspace", "dock-status--local"]) {
+  if (!`${html}\n${js}\n${css}`.includes(feature)) throw new Error(`Desktop interaction missing: ${feature}`);
+}
+for (const removed of ['id="composerHint"', "profile-row", "Local workspace"]) {
+  if (`${html}\n${js}`.includes(removed)) throw new Error(`Removed desktop element returned: ${removed}`);
+}
 
 console.log(`Verified ${required.length} desktop assets, renderer wiring, Grok design tokens, and JavaScript syntax.`);
