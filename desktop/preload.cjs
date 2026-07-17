@@ -5,6 +5,7 @@ const listeners = new Map();
 contextBridge.exposeInMainWorld("grokDesktop", {
   platform: process.platform,
   runtimeInfo: () => ipcRenderer.invoke("runtime:info"),
+  runtimeModels: () => ipcRenderer.invoke("runtime:models"),
   readNativeConfig: () => ipcRenderer.invoke("config:read"),
   setNativeSetting: (id, value) => ipcRenderer.invoke("config:set", { id, value }),
   saveRawConfig: (raw) => ipcRenderer.invoke("config:save-raw", raw),

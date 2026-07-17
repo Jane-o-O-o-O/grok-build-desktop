@@ -194,30 +194,72 @@ function locateGrok() {
   return null;
 }
 
-function runtimeInfo() {
-  const binary = locateGrok();
-  let version = null;
-  let models = [];
-  let defaultModel = null;
-  if (binary) {
-    const env = runtimeEnvironment();
-    const result = spawnSync(binary, ["--version"], { encoding: "utf8", windowsHide: true, timeout: 5000, env });
-    version = (result.stdout || result.stderr || "").trim() || null;
-    const modelResult = spawnSync(binary, ["models"], { encoding: "utf8", windowsHide: true, timeout: 10000, env });
-    const modelOutput = `${modelResult.stdout || ""}\n${modelResult.stderr || ""}`;
-    defaultModel = modelOutput.match(/Default model:\s*([^\s]+)/i)?.[1] || null;
-    models = [...new Set([...modelOutput.matchAll(/^\s*(?:\*|-)\s+([^\s(]+)/gm)].map((match) => match[1]))];
-  }
+function runCommand(command, args, { timeout = 10_000, env = process.env } = {}) {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, { windowsHide: true, env, stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+    const timer = setTimeout(() => {
+      child.kill();
+      finish({ status: null, stdout, stderr, timedOut: true });
+    }, timeout);
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => { stdout += chunk; });
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.on("error", (error) => finish({ status: null, stdout, stderr, error: error.message }));
+    child.on("close", (code) => finish({ status: code, stdout, stderr }));
+  });
+}
+
+function parseModelList(output) {
+  const text = String(output || "");
+  return {
+    defaultModel: text.match(/Default model:\s*([^\s]+)/i)?.[1] || null,
+    models: [...new Set([...text.matchAll(/^\s*(?:\*|-)\s+([^\s(]+)/gm)].map((match) => match[1]))]
+  };
+}
+
+function runtimeBase(binary) {
   return {
     connected: Boolean(binary),
     binary,
-    version,
-    models,
-    defaultModel,
+    version: null,
+    models: [],
+    defaultModel: null,
+    modelsReady: false,
     platform: process.platform,
     packaged: app.isPackaged,
     defaultCwd: app.isPackaged ? app.getPath("documents") : path.resolve(__dirname, "..")
   };
+}
+
+async function runtimeInfo() {
+  const binary = locateGrok();
+  const info = runtimeBase(binary);
+  if (!binary) {
+    info.modelsReady = true;
+    return info;
+  }
+  const result = await runCommand(binary, ["--version"], { timeout: 5000, env: runtimeEnvironment() });
+  info.version = (result.stdout || result.stderr || "").trim() || null;
+  return info;
+}
+
+async function runtimeModels() {
+  const binary = locateGrok();
+  if (!binary) return { ok: false, binary: null, models: [], defaultModel: null, modelsReady: true };
+  await refreshSystemProxyEnvironment(runtimeTargetUrl());
+  const modelResult = await runCommand(binary, ["models"], { timeout: 10_000, env: runtimeEnvironment() });
+  const parsed = parseModelList(`${modelResult.stdout || ""}\n${modelResult.stderr || ""}`);
+  return { ok: true, binary, ...parsed, modelsReady: true };
 }
 
 function emit(data) {
@@ -403,10 +445,9 @@ function startSessionUpdateBridge(runId, payload) {
   return bridge;
 }
 
-ipcMain.handle("runtime:info", async () => {
-  await refreshSystemProxyEnvironment("https://auth.x.ai/.well-known/openid-configuration");
-  return runtimeInfo();
-});
+ipcMain.handle("runtime:info", async () => runtimeInfo());
+
+ipcMain.handle("runtime:models", async () => runtimeModels());
 
 ipcMain.handle("config:read", () => {
   const config = readNativeConfig(grokConfigPath());

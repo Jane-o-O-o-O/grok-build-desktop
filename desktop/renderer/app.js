@@ -1341,7 +1341,7 @@
         if (info.signedIn) {
           stopAuthPolling();
           $("#authProgress").hidden = true;
-          await detectRuntime();
+          await detectRuntime({ waitForModels: true });
           toast("Grok 登录完成", info.email || info.name);
         } else if (checks >= 400) stopAuthPolling();
       } finally { authPollBusy = false; }
@@ -1405,7 +1405,7 @@
     $$('[data-remove-provider]').forEach((button) => button.addEventListener("click", async () => {
       savedProviders = api ? await api.removeProvider(button.dataset.removeProvider) : [];
       runtimeModels = runtimeModels.filter((item) => !String(item.id).startsWith(`desktop-${button.dataset.removeProvider.replace(/^provider-/, "provider")}`));
-      renderSavedProviders(); mergeProviderModels(); await detectRuntime();
+      renderSavedProviders(); mergeProviderModels(); await detectRuntime({ waitForModels: true });
       toast("模型服务已移除", "Grok 配置已同步更新");
     }));
   }
@@ -1465,7 +1465,7 @@
     $("#providerDetectStatus").className = "provider-detect-status";
     $("#providerDetectStatus").textContent = "填写连接信息后发现模型";
     $("#discoveredModels").hidden = true; $("#providerSaveRow").hidden = true;
-    renderSavedProviders(); await detectRuntime(); mergeProviderModels();
+    renderSavedProviders(); await detectRuntime({ waitForModels: true }); mergeProviderModels();
     toast("第三方模型已保存", `${selected.length} 个模型已加入模型选择器`);
   }
 
@@ -1507,24 +1507,59 @@
     $("#toastStack").appendChild(node); setTimeout(() => node.remove(), 3600);
   }
 
-  async function detectRuntime() {
-    if (!api) { runtimeState = { connected: true, version: "界面预览", binary: null }; updateAccountUI(); return runtimeState; }
-    const info = await api.runtimeInfo();
-    runtimeState = info;
+  function applyRuntimeShell(info) {
+    runtimeState = { ...runtimeState, ...info };
+    $("#settingsRuntimePath").textContent = info.binary || "未检测到";
+    $("#settingsRuntimeVersion").textContent = info.version || "—";
+    updateAccountUI();
+    updateWorkspace();
+  }
+
+  function applyRuntimeModels({ models = [], defaultModel = null } = {}) {
+    runtimeState = { ...runtimeState, models, defaultModel, modelsReady: true };
     runtimeModels = [
-      { id: "auto", label: info.defaultModel ? `自动 · ${info.defaultModel}` : "自动模型" },
-      ...(info.models || []).map((id) => ({ id, label: id }))
+      { id: "auto", label: defaultModel ? `自动 · ${defaultModel}` : "自动模型" },
+      ...models.map((id) => ({ id, label: id }))
     ];
     mergeProviderModels();
     if (!runtimeModels.some((item) => item.id === state.model)) state.model = "auto";
     state.modelLabel = runtimeModels.find((item) => item.id === state.model)?.label || runtimeModels[0].label;
     saveState();
     updateWorkspace();
-    $("#settingsRuntimePath").textContent = info.binary || "未检测到";
-    $("#settingsRuntimeVersion").textContent = info.version || "—";
-    updateAccountUI();
     if (!$("#settingsBackdrop").hidden && nativeConfig.values) renderNativeSettings();
-    return info;
+  }
+
+  let modelsHydratePromise = null;
+
+  async function hydrateRuntimeModels() {
+    if (!api) return runtimeState;
+    if (modelsHydratePromise) return modelsHydratePromise;
+    modelsHydratePromise = (async () => {
+      try {
+        const result = await api.runtimeModels();
+        applyRuntimeModels({
+          models: result?.models || [],
+          defaultModel: result?.defaultModel || null
+        });
+        return runtimeState;
+      } finally {
+        modelsHydratePromise = null;
+      }
+    })();
+    return modelsHydratePromise;
+  }
+
+  async function detectRuntime({ waitForModels = false } = {}) {
+    if (!api) {
+      runtimeState = { connected: true, version: "界面预览", binary: null, modelsReady: true };
+      updateAccountUI();
+      return runtimeState;
+    }
+    const info = await api.runtimeInfo();
+    applyRuntimeShell(info);
+    if (waitForModels) await hydrateRuntimeModels();
+    else void hydrateRuntimeModels();
+    return runtimeState;
   }
 
   async function refreshRuntimeDetection() {
@@ -1533,7 +1568,7 @@
     const previousPath = $("#settingsRuntimePath").textContent;
     $("#settingsRuntimePath").textContent = "正在重新检测 Grok Runtime…";
     try {
-      const info = await detectRuntime();
+      const info = await detectRuntime({ waitForModels: true });
       toast(info?.connected ? "Grok Runtime 已连接" : "Runtime 检测完成", info?.version || info?.binary || previousPath || "检测已完成");
     } finally {
       button.disabled = false; button.classList.remove("is-refreshing");
@@ -1586,7 +1621,7 @@
       if (!result.ok) { toast("配置保存失败", result.error); return; }
       nativeConfig = result; renderNativeSettings(); renderIntegrationSummary();
       $("#settingsConfigStatus").textContent = `已保存 ${nativeConfig.path}`; toast("原生配置已保存", "TUI 与桌面端将读取同一份 config.toml");
-      await detectRuntime();
+      await detectRuntime({ waitForModels: true });
     });
     $("#discoverModelsButton").addEventListener("click", discoverProviderModels);
     $("#saveProviderButton").addEventListener("click", saveDiscoveredProvider);
@@ -1652,10 +1687,16 @@
     text.scrollTop = text.scrollHeight;
     if (event.kind === "browser") toast("Grok 登录页面已打开", "请在浏览器完成账号登录");
     if (event.kind === "oauth-browser") toast("Runtime OAuth 授权页已打开", "授权完成后账号会自动同步到应用");
-    if (event.kind === "complete") setTimeout(async () => { stopAuthPolling(); await refreshAuthInfo(); await detectRuntime(); progress.hidden = true; toast("Grok 登录完成", authState.email || authState.name); }, 700);
+    if (event.kind === "complete") setTimeout(async () => { stopAuthPolling(); await refreshAuthInfo(); await detectRuntime({ waitForModels: true }); progress.hidden = true; toast("Grok 登录完成", authState.email || authState.name); }, 700);
     if (event.kind === "error") { stopAuthPolling(); toast("Grok 登录状态", event.text); }
   });
   renderDockTabPicker();
   renderAll();
-  (async () => { await loadSavedProviders(); await loadNativeConfig(); await refreshAuthInfo(); await detectRuntime(); await refreshGitInfo(); refreshActiveDockPane(); })();
+  (async () => {
+    const runtimePromise = detectRuntime();
+    await Promise.all([loadSavedProviders(), loadNativeConfig(), refreshAuthInfo()]);
+    await runtimePromise;
+    await refreshGitInfo();
+    refreshActiveDockPane();
+  })();
 })();
