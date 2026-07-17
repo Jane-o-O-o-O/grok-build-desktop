@@ -25,7 +25,7 @@ kbd { border: 0; border-radius: 4px; background: var(--surface-hover); color: va
   grid-template-rows: var(--titlebar-height) minmax(0, 1fr);
   width: auto;
   height: auto;
-  overflow: hidden;
+  overflow: clip;
   background:
     radial-gradient(circle at 67% 105%, rgba(var(--accent-rgb), .055), transparent 30%),
     var(--bg);

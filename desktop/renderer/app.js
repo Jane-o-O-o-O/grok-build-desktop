@@ -530,7 +530,12 @@
       event.stopPropagation(); closeDockTab(button.dataset.closeDock);
     }));
     requestAnimationFrame(() => {
-      target.querySelector(".dock-tab.is-active")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      const activeTab = target.querySelector(".dock-tab.is-active");
+      if (activeTab) {
+        const tabRect = activeTab.getBoundingClientRect(); const targetRect = target.getBoundingClientRect();
+        if (tabRect.left < targetRect.left) target.scrollLeft -= targetRect.left - tabRect.left;
+        else if (tabRect.right > targetRect.right) target.scrollLeft += tabRect.right - targetRect.right;
+      }
       updateDockScrollButtons();
     });
   }
@@ -941,11 +946,13 @@
   }
 
   function updateLayout() {
-    $("#appShell").classList.toggle("is-sidebar-hidden", state.sidebarHidden);
-    $("#appShell").classList.toggle("is-inspector-open", state.inspectorOpen);
+    const shell = $("#appShell");
+    shell.classList.toggle("is-sidebar-hidden", state.sidebarHidden);
+    shell.classList.toggle("is-inspector-open", state.inspectorOpen);
     // A focused control inside a collapsing grid column can make Chromium keep a
     // hidden horizontal document offset. Reset it so the left navigation never
     // gets pushed outside the viewport after closing the right workbench.
+    shell.scrollLeft = 0;
     if (document.scrollingElement?.scrollLeft) document.scrollingElement.scrollLeft = 0;
     document.documentElement.dataset.theme = resolvedTheme();
     updateSwitches();
