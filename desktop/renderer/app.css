@@ -18,11 +18,14 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 kbd { border: 0; border-radius: 4px; background: var(--surface-hover); color: var(--text-3); font: 500 10px/1 var(--font-sans); padding: 4px 5px; }
 
 .app-shell {
+  position: fixed;
+  inset: 0;
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 0;
   grid-template-rows: var(--titlebar-height) minmax(0, 1fr);
-  width: 100vw;
-  height: 100vh;
+  width: auto;
+  height: auto;
+  overflow: hidden;
   background:
     radial-gradient(circle at 67% 105%, rgba(var(--accent-rgb), .055), transparent 30%),
     var(--bg);
@@ -83,7 +86,8 @@ kbd { border: 0; border-radius: 4px; background: var(--surface-hover); color: va
 .sidebar {
   grid-column: 1;
   grid-row: 2;
-  min-width: var(--sidebar-width);
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -260,7 +264,7 @@ button.dock-status:hover { border-color: var(--line-accent); background: var(--s
 .dock-status--local i { width: 6px; height: 6px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px rgba(92,232,170,.55); }
 .dock-status--local b { color: var(--good); }
 
-.inspector { grid-column: 3; grid-row: 2; min-width: var(--inspector-width); overflow: hidden; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--sidebar-bg); opacity: 0; pointer-events: none; transform: translateX(30px); transition: opacity var(--speed-fast), transform var(--speed-layout) var(--ease-out); }
+.inspector { grid-column: 3; grid-row: 2; width: 100%; min-width: 0; overflow: hidden; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--sidebar-bg); opacity: 0; pointer-events: none; transform: translateX(30px); transition: opacity var(--speed-fast), transform var(--speed-layout) var(--ease-out); }
 .is-inspector-open .inspector { opacity: 1; pointer-events: auto; transform: none; }
 .inspector__head { height: 66px; padding: 12px 12px 10px 16px; display: flex; align-items: center; justify-content: space-between; }
 .inspector__head small { color: var(--accent); font: 9px var(--font-mono); letter-spacing: .14em; }.inspector__head h2 { margin: 1px 0 0; font-size: 15px; font-weight: 500; }

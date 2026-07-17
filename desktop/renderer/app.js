@@ -943,6 +943,10 @@
   function updateLayout() {
     $("#appShell").classList.toggle("is-sidebar-hidden", state.sidebarHidden);
     $("#appShell").classList.toggle("is-inspector-open", state.inspectorOpen);
+    // A focused control inside a collapsing grid column can make Chromium keep a
+    // hidden horizontal document offset. Reset it so the left navigation never
+    // gets pushed outside the viewport after closing the right workbench.
+    if (document.scrollingElement?.scrollLeft) document.scrollingElement.scrollLeft = 0;
     document.documentElement.dataset.theme = resolvedTheme();
     updateSwitches();
   }
