@@ -89,18 +89,31 @@ function authInfo() {
 
 function integrationSummary(raw) {
   const sectionNames = [...String(raw || "").matchAll(/^\s*\[([^\]]+)\]/gm)].map((match) => match[1]);
-  const count = (prefix) => new Set(sectionNames.filter((name) => name.startsWith(prefix)).map((name) => name.split(".").slice(0, 2).join("."))).size;
-  const directoryCount = (name) => {
+  const listSections = (prefix) => [...new Set(sectionNames.filter((name) => name.startsWith(prefix)).map((name) => name.split(".").slice(0, 2).join(".")))];
+  const listDirectory = (name) => {
     const target = path.join(grokHomePath(), name);
-    try { return fs.readdirSync(target, { withFileTypes: true }).filter((entry) => !entry.name.startsWith(".")).length; } catch { return 0; }
+    try {
+      return {
+        path: target,
+        items: fs.readdirSync(target, { withFileTypes: true }).filter((entry) => !entry.name.startsWith(".")).map((entry) => entry.name).sort((a, b) => a.localeCompare(b))
+      };
+    } catch {
+      return { path: target, items: [] };
+    }
   };
+  const mcp = listSections("mcp_servers.");
+  const models = listSections("model.");
+  const plugins = listDirectory("plugins");
+  const skills = listDirectory("skills");
+  const hooks = listDirectory("hooks");
+  const agents = listDirectory("agents");
   return {
-    mcp: count("mcp_servers."),
-    models: count("model."),
-    plugins: directoryCount("plugins"),
-    skills: directoryCount("skills"),
-    hooks: directoryCount("hooks"),
-    agents: directoryCount("agents")
+    mcp: { count: mcp.length, items: mcp, source: "config.toml", path: grokConfigPath() },
+    models: { count: models.length, items: models, source: "config.toml", path: grokConfigPath() },
+    plugins: { count: plugins.items.length, items: plugins.items, source: "plugins/", path: plugins.path },
+    skills: { count: skills.items.length, items: skills.items, source: "skills/", path: skills.path },
+    hooks: { count: hooks.items.length, items: hooks.items, source: "hooks/", path: hooks.path },
+    agents: { count: agents.items.length, items: agents.items, source: "agents/", path: agents.path }
   };
 }
 

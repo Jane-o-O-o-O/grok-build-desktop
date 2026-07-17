@@ -1343,13 +1343,13 @@
   function settingControl(item) {
     const [id, , , type, choices = {}] = item;
     const value = nativeConfig.values?.[id];
-    if (type === "bool") return `<div class="native-setting-control"><button class="switch" data-native-setting="${id}" role="switch" aria-checked="${Boolean(value)}"><i></i></button><svg class="setting-saved"><use href="#i-check"/></svg></div>`;
+    if (type === "bool") return `<div class="native-setting-control"><button class="switch" data-native-setting="${id}" role="switch" aria-checked="${Boolean(value)}"><i></i></button></div>`;
     if (type === "model") {
-      return `<div class="native-setting-control"><select data-native-setting="${id}">${modelSettingOptions(value).map((option) => `<option value="${escapeHtml(option.id)}" ${option.id === value ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select><svg class="setting-saved"><use href="#i-check"/></svg></div>`;
+      return `<div class="native-setting-control"><select data-native-setting="${id}">${modelSettingOptions(value).map((option) => `<option value="${escapeHtml(option.id)}" ${option.id === value ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></div>`;
     }
-    if (type === "select") return `<div class="native-setting-control"><select data-native-setting="${id}">${Object.entries(choices).map(([optionValue, label]) => `<option value="${escapeHtml(optionValue)}" ${optionValue === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select><svg class="setting-saved"><use href="#i-check"/></svg></div>`;
+    if (type === "select") return `<div class="native-setting-control"><select data-native-setting="${id}">${Object.entries(choices).map(([optionValue, label]) => `<option value="${escapeHtml(optionValue)}" ${optionValue === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></div>`;
     const step = choices.step || 1;
-    return `<div class="native-setting-control"><input type="number" step="${step}" value="${Number(value ?? 0)}" data-native-setting="${id}"/>${choices.suffix ? `<small>${escapeHtml(choices.suffix)}</small>` : ""}<svg class="setting-saved"><use href="#i-check"/></svg></div>`;
+    return `<div class="native-setting-control"><input type="number" step="${step}" value="${Number(value ?? 0)}" data-native-setting="${id}"/>${choices.suffix ? `<span class="native-setting-affix">${escapeHtml(choices.suffix)}</span>` : ""}</div>`;
   }
 
   function renderNativeSettings() {
@@ -1372,19 +1372,84 @@
     nativeConfig.values[id] = result.value;
     if (result.raw != null) { nativeConfig.raw = result.raw; $("#rawConfigEditor").value = result.raw; }
     if (control.matches("button")) control.setAttribute("aria-checked", String(Boolean(result.value)));
-    control.closest(".native-setting-control")?.classList.add("is-saved");
-    setTimeout(() => control.closest(".native-setting-control")?.classList.remove("is-saved"), 1200);
     if (id === "permission_mode") { state.alwaysApprove = result.value === "always-approve"; saveState(); updateSwitches(); }
   }
 
+  const integrationCatalog = {
+    mcp: { icon: "i-terminal", label: "MCP Servers", empty: "还没有配置 MCP Server" },
+    plugins: { icon: "i-tasks", label: "Plugins", empty: "plugins 目录为空" },
+    skills: { icon: "i-file", label: "Skills", empty: "skills 目录为空" },
+    hooks: { icon: "i-terminal", label: "Hooks", empty: "hooks 目录为空" },
+    agents: { icon: "i-user", label: "Agents", empty: "agents 目录为空" },
+    models: { icon: "i-sliders", label: "Custom Models", empty: "还没有自定义模型段落" }
+  };
+  let activeIntegrationKey = null;
+
+  function integrationEntry(key) {
+    const value = nativeConfig.integrations?.[key];
+    if (value && typeof value === "object") {
+      return {
+        count: Number(value.count || value.items?.length || 0),
+        items: Array.isArray(value.items) ? value.items : [],
+        source: value.source || key,
+        path: value.path || nativeConfig.path
+      };
+    }
+    return { count: Number(value || 0), items: [], source: key, path: nativeConfig.path };
+  }
+
+  function closeIntegrationDetail() {
+    activeIntegrationKey = null;
+    $("#integrationDetailBackdrop").hidden = true;
+  }
+
+  function openIntegrationDetail(key) {
+    const meta = integrationCatalog[key];
+    const entry = integrationEntry(key);
+    if (!meta) return;
+    activeIntegrationKey = key;
+    $("#integrationDetailSource").textContent = meta.label.toUpperCase();
+    $("#integrationDetailTitle").textContent = meta.label;
+    $("#integrationDetailPath").textContent = entry.path || "—";
+    const list = $("#integrationDetailList");
+    list.innerHTML = entry.items.length
+      ? entry.items.map((item) => `<div class="integration-detail-item"><svg><use href="#${meta.icon}"/></svg><span>${escapeHtml(item)}</span></div>`).join("")
+      : `<div class="integration-detail-empty">${escapeHtml(meta.empty)}</div>`;
+    $("#integrationDetailOpen").textContent = entry.source === "config.toml" ? "打开配置" : "打开目录";
+    $("#integrationDetailBackdrop").hidden = false;
+  }
+
+  async function revealActiveIntegration() {
+    const entry = integrationEntry(activeIntegrationKey);
+    if (!entry.path) return;
+    if (api?.revealPath) await api.revealPath(entry.path);
+    else toast("预览模式", entry.path);
+  }
+
+  async function openActiveIntegration() {
+    const entry = integrationEntry(activeIntegrationKey);
+    if (!entry.path) return;
+    if (entry.source === "config.toml") {
+      if (api?.openNativeConfig) await api.openNativeConfig();
+      else toast("预览模式", "打开原生配置文件");
+      return;
+    }
+    if (api?.revealPath) await api.revealPath(entry.path);
+    else toast("预览模式", entry.path);
+  }
+
   function renderIntegrationSummary() {
-    const counts = nativeConfig.integrations || {};
-    const items = [
-      ["i-terminal", "MCP Servers", counts.mcp || 0], ["i-tasks", "Plugins", counts.plugins || 0],
-      ["i-file", "Skills", counts.skills || 0], ["i-terminal", "Hooks", counts.hooks || 0],
-      ["i-user", "Agents", counts.agents || 0], ["i-sliders", "Custom Models", counts.models || 0]
-    ];
-    $("#integrationGrid").innerHTML = items.map(([icon, label, count]) => `<article class="integration-card"><svg><use href="#${icon}"/></svg><b>${label}</b><small>${count} 个已发现项目</small></article>`).join("");
+    const items = Object.entries(integrationCatalog).map(([key, meta]) => {
+      const entry = integrationEntry(key);
+      return [key, meta.icon, meta.label, entry.count];
+    });
+    $("#integrationGrid").innerHTML = items.map(([key, icon, label, count]) => `
+      <button type="button" class="integration-card" data-integration="${key}">
+        <svg><use href="#${icon}"/></svg>
+        <b>${label}</b>
+        <small>${count} 个已发现项目</small>
+      </button>`).join("");
+    $$("[data-integration]").forEach((button) => button.addEventListener("click", () => openIntegrationDetail(button.dataset.integration)));
   }
 
   async function loadNativeConfig() {
@@ -1484,6 +1549,7 @@
     $("#settingsBackdrop").hidden = true;
     $("#settingsSearch").value = "";
     clearSettingsSearchUI();
+    closeIntegrationDetail();
   }
 
   function providerModelOptions() {
@@ -1736,6 +1802,10 @@
     $("#reloadRawConfig").addEventListener("click", loadNativeConfig);
     $("#revealRawConfig").addEventListener("click", () => api?.revealNativeConfig());
     $("#integrationOpenConfig").addEventListener("click", () => api?.openNativeConfig());
+    $("#integrationDetailClose").addEventListener("click", closeIntegrationDetail);
+    $("#integrationDetailReveal").addEventListener("click", revealActiveIntegration);
+    $("#integrationDetailOpen").addEventListener("click", openActiveIntegration);
+    $("#integrationDetailBackdrop").addEventListener("click", (event) => { if (event.target === $("#integrationDetailBackdrop")) closeIntegrationDetail(); });
     $("#saveRawConfig").addEventListener("click", async () => {
       const result = api ? await api.saveRawConfig($("#rawConfigEditor").value) : { ok: true, raw: $("#rawConfigEditor").value, values: nativeConfig.values };
       if (!result.ok) { toast("配置保存失败", result.error); return; }
@@ -1775,7 +1845,10 @@
       if (mod && event.key.toLowerCase() === "n") { event.preventDefault(); createThread(); }
       if (mod && event.key === ",") { event.preventDefault(); openSettings(); }
       if (mod && event.key.toLowerCase() === "f" && !$("#settingsBackdrop").hidden) { event.preventDefault(); $("#settingsSearch").focus(); }
-      if (event.key === "Escape") { $("#accountPopover").hidden = true; $("#branchPopover").hidden = true; $("#branchButton").setAttribute("aria-expanded", "false"); closePicker(); closePalette(); closeSettings(); }
+      if (event.key === "Escape") {
+        if (!$("#integrationDetailBackdrop").hidden) { closeIntegrationDetail(); return; }
+        $("#accountPopover").hidden = true; $("#branchPopover").hidden = true; $("#branchButton").setAttribute("aria-expanded", "false"); closePicker(); closePalette(); closeSettings();
+      }
     });
     document.addEventListener("click", (event) => {
       if (pickerPopover && !pickerPopover.contains(event.target)) closePicker();

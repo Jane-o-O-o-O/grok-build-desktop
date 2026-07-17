@@ -252,6 +252,26 @@
       </section>
     </div>
 
+    <div class="modal-backdrop integration-detail-backdrop" id="integrationDetailBackdrop" hidden>
+      <section class="integration-detail-modal" role="dialog" aria-modal="true" aria-labelledby="integrationDetailTitle">
+        <header>
+          <div>
+            <small id="integrationDetailSource">INTEGRATION</small>
+            <h2 id="integrationDetailTitle">集成详情</h2>
+          </div>
+          <button class="icon-button" id="integrationDetailClose" aria-label="关闭"><svg><use href="#i-x"/></svg></button>
+        </header>
+        <div class="integration-detail-list" id="integrationDetailList"></div>
+        <footer>
+          <code id="integrationDetailPath"></code>
+          <div class="integration-detail-actions">
+            <button class="secondary-button" id="integrationDetailReveal"><svg><use href="#i-folder"/></svg>显示位置</button>
+            <button class="primary-button" id="integrationDetailOpen">打开配置</button>
+          </div>
+        </footer>
+      </section>
+    </div>
+
     <div class="toast-stack" id="toastStack"></div>
     <script src="app.js"></script>
   </body>
