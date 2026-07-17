@@ -1,0 +1,23 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const { execFileSync } = require("node:child_process");
+const { createGitBranch, readGitInfo, switchGitBranch } = require("../git-workspace.cjs");
+
+const directory = fs.mkdtempSync(path.join(os.tmpdir(), "grok-desktop-git-"));
+const git = (...args) => execFileSync("git", ["-C", directory, ...args], { stdio: "pipe" });
+git("init", "-b", "main"); git("config", "user.name", "Fixture"); git("config", "user.email", "fixture@example.com");
+fs.writeFileSync(path.join(directory, "README.md"), "# fixture\n"); git("add", "README.md"); git("commit", "-m", "init");
+let info = readGitInfo(directory);
+assert.equal(info.isRepo, true); assert.equal(info.current, "main"); assert.equal(info.dirtyCount, 0);
+const created = createGitBranch(directory, "feature/desktop");
+assert.equal(created.ok, true); assert.equal(created.info.current, "feature/desktop");
+const switched = switchGitBranch(directory, "main");
+assert.equal(switched.ok, true); assert.equal(switched.info.current, "main");
+fs.appendFileSync(path.join(directory, "README.md"), "dirty\n");
+info = readGitInfo(directory); assert.equal(info.dirtyCount, 1);
+assert.equal(createGitBranch(directory, "bad branch").ok, false);
+assert.equal(switchGitBranch(directory, "missing").ok, false);
+fs.rmSync(directory, { recursive: true, force: true });
+console.log("Git branch discovery, creation, switching, and dirty-state reporting verified.");

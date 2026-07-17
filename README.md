@@ -50,7 +50,7 @@ Grok Build GUI 是 Grok Build 原生 Rust CLI/TUI 的桌面入口。桌面端通
 | **第三方模型** | OpenAI / Anthropic 自动识别、模型发现、按需勾选、本机密钥保护 |
 | **右侧工作台** | 审阅、终端、浏览器、文件、侧边任务，多标签并行使用 |
 | **Grok 账号** | OAuth 登录、退出登录、个人资料、团队信息、Runtime 状态与版本 |
-| **本地工作区** | 目录选择、Git 状态、Diff 统计、文件浏览与预览、本地 Shell |
+| **本地工作区** | 目录选择、Git 分支查看/切换/创建、Dirty 状态、Diff 统计、文件浏览与本地 Shell |
 | **Grok 视觉系统** | 来自原生 TUI Braille 标志、暗色宇宙底、Signal Cyan、统一浮层与动效 |
 
 ---
@@ -397,6 +397,23 @@ api_backend = "chat_completions"
 
 ---
 
+## Git 分支选择器
+
+主对话工具栏左上角的分支按钮会读取当前工作区的真实 Git 状态，而不是固定显示 `main`：
+
+- 显示当前分支，Detached HEAD 时显示短 Commit ID；
+- 绿色圆点表示工作区干净，黄色圆点表示存在未提交修改；
+- 展示未提交数量、已暂存数量、上游分支和 Ahead/Behind；
+- 搜索并切换本地分支；
+- 创建新分支并立即切换；
+- 一键打开右侧“审阅”标签；
+- 切换工作区后自动刷新；
+- Agent 任务运行期间锁定分支切换，避免执行上下文发生变化。
+
+分支操作通过参数化的 Git 子进程执行，分支名称会先经过 `git check-ref-format --branch` 校验。Git 自身会保护可能覆盖本地修改的切换操作，并把错误原因返回到桌面提示。
+
+---
+
 ## Grok 账号与 Runtime
 
 点击左下角账号区域会打开统一菜单：
@@ -461,6 +478,7 @@ npm run verify
 npm run test:providers
 npm run test:config
 npm run test:account
+npm run test:git
 ```
 
 测试覆盖：
@@ -474,6 +492,7 @@ npm run test:account
 - TOML 目标字段更新与保留
 - 配置备份
 - 账号资料脱敏
+- Git 分支发现、Dirty 状态、创建和切换
 
 只预览界面：
 

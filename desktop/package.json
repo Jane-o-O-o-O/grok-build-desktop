@@ -12,6 +12,7 @@
     "test:providers": "node scripts/test-providers.cjs",
     "test:config": "node scripts/test-native-config.cjs",
     "test:account": "node scripts/test-account-info.cjs",
+    "test:git": "node scripts/test-git-workspace.cjs",
     "preview": "node scripts/serve.cjs",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
@@ -30,6 +31,7 @@
       "provider-config.cjs",
       "native-config.cjs",
       "account-info.cjs",
+      "git-workspace.cjs",
       "renderer/**/*",
       "build/icon.png"
     ],

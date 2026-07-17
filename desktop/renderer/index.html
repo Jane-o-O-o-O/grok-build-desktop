@@ -99,9 +99,17 @@
 
       <main class="workspace">
         <div class="workspace-toolbar">
-          <div class="toolbar-group">
+          <div class="toolbar-group toolbar-group--branch">
             <button class="icon-button sidebar-toggle" id="sidebarToggle" title="侧栏"><svg><use href="#i-panel"/></svg></button>
-            <button class="branch-pill"><svg><use href="#i-git"/></svg><span>main</span><i></i></button>
+            <button class="branch-pill" id="branchButton" aria-expanded="false" title="查看和切换 Git 分支"><svg><use href="#i-git"/></svg><span id="branchName">检查分支</span><i id="branchDirtyDot"></i><svg class="branch-chevron"><use href="#i-chevron"/></svg></button>
+            <section class="branch-popover" id="branchPopover" hidden>
+              <header><span><small>GIT WORKSPACE</small><b id="branchPopoverTitle">分支</b></span><button class="icon-button" id="branchRefresh" title="刷新"><svg><use href="#i-refresh"/></svg></button></header>
+              <div class="branch-summary" id="branchSummary"></div>
+              <label class="branch-search"><svg><use href="#i-search"/></svg><input id="branchSearch" placeholder="搜索本地分支…"/></label>
+              <div class="branch-list" id="branchList"></div>
+              <form class="branch-create" id="branchCreateForm"><input id="branchCreateInput" placeholder="新分支名称" spellcheck="false"/><button class="secondary-button" type="submit"><svg><use href="#i-plus"/></svg>创建</button></form>
+              <footer><button class="text-button" id="branchOpenReview"><svg><use href="#i-review"/></svg>打开审阅</button><span id="branchRootLabel"></span></footer>
+            </section>
           </div>
           <div class="toolbar-group toolbar-group--right">
             <span class="session-state" id="sessionState"><i></i>准备就绪</span>

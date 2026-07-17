@@ -36,6 +36,8 @@
   let nativeConfig = { values: {}, raw: "", path: "~/.grok/config.toml", integrations: {} };
   let authState = { signedIn: false, name: "登录 Grok" };
   let runtimeState = { connected: false, version: null, binary: null };
+  let gitState = { ok: true, isRepo: false, branches: [], dirtyCount: 0 };
+  let branchFilter = "";
 
   const nativeSettingGroups = [
     { target: "nativeGeneralSettings", title: "原生会话", items: [
@@ -321,6 +323,67 @@
     return String(filePath).split(/[\\/]/).filter(Boolean).pop() || filePath;
   }
 
+  function updateBranchPill() {
+    const button = $("#branchButton");
+    button.classList.toggle("is-no-repo", !gitState.isRepo);
+    button.classList.toggle("is-dirty", Boolean(gitState.isRepo && gitState.dirtyCount));
+    $("#branchName").textContent = gitState.isRepo ? gitState.current : "非 Git 工作区";
+    $("#branchDirtyDot").title = gitState.isRepo ? (gitState.dirtyCount ? `${gitState.dirtyCount} 个未提交修改` : "工作区干净") : "未检测到 Git 仓库";
+  }
+
+  function renderBranchPopover() {
+    const title = $("#branchPopoverTitle"); const summary = $("#branchSummary"); const list = $("#branchList");
+    if (!gitState.isRepo) {
+      title.textContent = "未检测到 Git 仓库";
+      summary.className = "branch-summary"; summary.innerHTML = "选择一个 Git 工作区后可查看和切换分支";
+      $("#branchSearch").closest(".branch-search").hidden = true; $("#branchCreateForm").hidden = true; $("#branchOpenReview").hidden = true;
+      list.innerHTML = '<div class="context-empty">当前目录不在 Git 工作树中</div>'; $("#branchRootLabel").textContent = basename(state.cwd); return;
+    }
+    $("#branchSearch").closest(".branch-search").hidden = false; $("#branchCreateForm").hidden = false; $("#branchOpenReview").hidden = false;
+    title.textContent = gitState.detached ? `Detached · ${gitState.current}` : gitState.current;
+    summary.className = `branch-summary ${gitState.dirtyCount ? "is-dirty" : ""}`;
+    const divergence = [gitState.ahead ? `↑${gitState.ahead}` : "", gitState.behind ? `↓${gitState.behind}` : ""].filter(Boolean).join(" ");
+    summary.innerHTML = `<span class="branch-summary-dot"></span><b>${gitState.dirtyCount ? `${gitState.dirtyCount} 个未提交修改` : "工作区干净"}</b>${gitState.stagedCount ? `<span>· ${gitState.stagedCount} 个已暂存</span>` : ""}${gitState.upstream ? `<span>· ${escapeHtml(gitState.upstream)} ${divergence}</span>` : '<span>· 无上游分支</span>'}`;
+    const branches = (gitState.branches || []).filter((branch) => branch.name.toLowerCase().includes(branchFilter.toLowerCase()));
+    list.innerHTML = branches.map((branch) => `<button class="branch-item ${branch.current ? "is-current" : ""}" data-git-branch="${escapeHtml(branch.name)}" ${branch.current ? "disabled" : ""}><svg><use href="#i-git"/></svg><span><b>${escapeHtml(branch.name)}</b><small>${escapeHtml([branch.upstream, branch.updated].filter(Boolean).join(" · ") || "本地分支")}</small></span>${branch.current ? "<em>当前</em>" : ""}</button>`).join("") || '<div class="context-empty">没有匹配的本地分支</div>';
+    $("#branchRootLabel").textContent = basename(gitState.root || state.cwd);
+    $$('[data-git-branch]', list).forEach((button) => button.addEventListener("click", () => switchBranch(button.dataset.gitBranch, button)));
+  }
+
+  async function refreshGitInfo() {
+    $("#branchName").textContent = "检查分支…";
+    gitState = api ? await api.gitInfo(state.cwd) : { ok: true, isRepo: true, root: state.cwd, current: "main", dirtyCount: 0, stagedCount: 0, branches: [{ name: "main", current: true, updated: "刚刚" }, { name: "feature/ui", current: false, updated: "2 小时前" }] };
+    if (!gitState.ok) gitState = { ok: true, isRepo: false, branches: [], dirtyCount: 0, error: gitState.error };
+    updateBranchPill(); renderBranchPopover();
+  }
+
+  async function switchBranch(branch, button) {
+    if (activeRun) { toast("任务正在运行", "完成或停止当前任务后再切换分支"); return; }
+    button.disabled = true;
+    const result = api ? await api.switchGitBranch(state.cwd, branch) : { ok: true, info: { ...gitState, current: branch, branches: gitState.branches.map((item) => ({ ...item, current: item.name === branch })) } };
+    button.disabled = false;
+    if (!result.ok) { toast("分支切换失败", result.error); return; }
+    gitState = result.info; updateBranchPill(); renderBranchPopover(); $("#branchPopover").hidden = true; $("#branchButton").setAttribute("aria-expanded", "false");
+    refreshActiveDockPane(); toast("已切换 Git 分支", branch);
+  }
+
+  async function createBranch(event) {
+    event.preventDefault();
+    const input = $("#branchCreateInput"); const branch = input.value.trim(); if (!branch) return;
+    if (activeRun) { toast("任务正在运行", "完成或停止当前任务后再创建分支"); return; }
+    const submit = $("#branchCreateForm button"); submit.disabled = true;
+    const result = api ? await api.createGitBranch(state.cwd, branch) : { ok: true, info: { ...gitState, current: branch, branches: [{ name: branch, current: true }, ...gitState.branches.map((item) => ({ ...item, current: false }))] } };
+    submit.disabled = false;
+    if (!result.ok) { toast("创建分支失败", result.error); return; }
+    input.value = ""; gitState = result.info; updateBranchPill(); renderBranchPopover(); toast("已创建并切换分支", branch);
+  }
+
+  async function toggleBranchPopover(event) {
+    event.stopPropagation(); const popover = $("#branchPopover"); const opening = popover.hidden;
+    popover.hidden = !opening; $("#branchButton").setAttribute("aria-expanded", String(opening));
+    if (opening) { branchFilter = ""; $("#branchSearch").value = ""; await refreshGitInfo(); }
+  }
+
   function renderAttachments() {
     $("#attachmentList").innerHTML = state.attachments.map((file, index) => `<div class="attachment-chip"><svg><use href="#i-paperclip"/></svg><span>${escapeHtml(basename(file))}</span><button data-remove-attachment="${index}"><svg><use href="#i-x"/></svg></button></div>`).join("");
     $$('[data-remove-attachment]').forEach((button) => button.addEventListener("click", () => { state.attachments.splice(Number(button.dataset.removeAttachment), 1); renderAttachments(); }));
@@ -583,7 +646,7 @@
   async function chooseWorkspace() {
     if (!api) { toast("桌面预览", "Electron 中可选择本地工作区"); return; }
     const cwd = await api.pickWorkspace();
-    if (cwd) { state.cwd = cwd; const thread = activeThread(); if (thread && !thread.messages.length) thread.cwd = cwd; saveState(); updateWorkspace(); updateWindowTrail(); refreshActiveDockPane(); toast("已切换工作区", cwd); }
+    if (cwd) { state.cwd = cwd; const thread = activeThread(); if (thread && !thread.messages.length) thread.cwd = cwd; saveState(); updateWorkspace(); updateWindowTrail(); await refreshGitInfo(); refreshActiveDockPane(); toast("已切换工作区", cwd); }
   }
 
   async function chooseFiles() {
@@ -917,6 +980,11 @@
     $("#searchButton").addEventListener("click", openPalette);
     $("#brandButton").addEventListener("click", () => { state.activeThreadId = null; saveState(); renderAll(); });
     $("#workspaceButton").addEventListener("click", chooseWorkspace); $("#cwdButton").addEventListener("click", chooseWorkspace);
+    $("#branchButton").addEventListener("click", toggleBranchPopover);
+    $("#branchRefresh").addEventListener("click", async (event) => { event.stopPropagation(); await refreshGitInfo(); });
+    $("#branchSearch").addEventListener("input", (event) => { branchFilter = event.target.value; renderBranchPopover(); });
+    $("#branchCreateForm").addEventListener("submit", createBranch);
+    $("#branchOpenReview").addEventListener("click", () => { $("#branchPopover").hidden = true; $("#branchButton").setAttribute("aria-expanded", "false"); openDockType("review"); });
     $("#attachButton").addEventListener("click", chooseFiles);
     $("#sendButton").addEventListener("click", sendPrompt);
     $("#promptInput").addEventListener("input", autoSizeInput);
@@ -1010,12 +1078,13 @@
       if (mod && event.key.toLowerCase() === "n") { event.preventDefault(); createThread(); }
       if (mod && event.key === ",") { event.preventDefault(); openSettings(); }
       if (mod && event.key.toLowerCase() === "f" && !$("#settingsBackdrop").hidden) { event.preventDefault(); $("#settingsSearch").focus(); }
-      if (event.key === "Escape") { $("#accountPopover").hidden = true; closePicker(); closePalette(); closeSettings(); }
+      if (event.key === "Escape") { $("#accountPopover").hidden = true; $("#branchPopover").hidden = true; $("#branchButton").setAttribute("aria-expanded", "false"); closePicker(); closePalette(); closeSettings(); }
     });
     document.addEventListener("click", (event) => {
       if (pickerPopover && !pickerPopover.contains(event.target)) closePicker();
       if (!event.target.closest("#dockTabPicker") && !event.target.closest("#dockTabAdd")) $("#dockTabPicker").hidden = true;
       if (!event.target.closest("#accountPopover") && !event.target.closest("#runtimeCard")) $("#accountPopover").hidden = true;
+      if (!event.target.closest("#branchPopover") && !event.target.closest("#branchButton")) { $("#branchPopover").hidden = true; $("#branchButton").setAttribute("aria-expanded", "false"); }
     });
     matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => { if (state.theme === "system") updateLayout(); });
   }
@@ -1032,5 +1101,5 @@
   });
   renderDockTabPicker();
   renderAll();
-  (async () => { await loadSavedProviders(); await loadNativeConfig(); await refreshAuthInfo(); await detectRuntime(); refreshActiveDockPane(); })();
+  (async () => { await loadSavedProviders(); await loadNativeConfig(); await refreshAuthInfo(); await detectRuntime(); await refreshGitInfo(); refreshActiveDockPane(); })();
 })();

@@ -26,6 +26,7 @@ npm run verify
 npm run test:providers
 npm run test:config
 npm run test:account
+npm run test:git
 npm run pack
 ```
 
@@ -35,6 +36,7 @@ npm run pack
 - 完整设置窗口直接读写原生 `~/.grok/config.toml`，提供 59 项类型化设置、搜索、分区导航、集成概览和原始 TOML 编辑器；每次写入会生成 `config.toml.desktop-backup`。
 - 左下角账号入口同时展示 Grok 登录身份、Runtime 在线状态和版本，并连接个人资料、完整设置、OAuth 登录与退出登录流程。
 - 右侧工作台支持审阅、终端、浏览器、文件和侧边任务标签；点击 `+` 可以打开功能标签，标签之间可以同时保留并切换。
+- 主工具栏 Git 按钮会读取当前分支、Dirty/暂存状态、上游 Ahead/Behind，并支持搜索、切换、创建本地分支及跳转审阅。
 - 原生 TUI 与参考设置页的能力对照见 [`docs/settings-capability-audit.md`](docs/settings-capability-audit.md)。
 
 ## 设计来源与 Grok 风格

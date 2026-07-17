@@ -16,6 +16,7 @@ const {
   updateNativeSetting
 } = require("./native-config.cjs");
 const { readAccountInfo } = require("./account-info.cjs");
+const { createGitBranch, readGitInfo, switchGitBranch } = require("./git-workspace.cjs");
 
 const activeRuns = new Map();
 let mainWindow;
@@ -351,6 +352,10 @@ ipcMain.handle("shell:external", async (_event, target) => {
 function validWorkspace(cwd) {
   return typeof cwd === "string" && fs.existsSync(cwd) && fs.statSync(cwd).isDirectory();
 }
+
+ipcMain.handle("git:info", (_event, cwd) => readGitInfo(cwd));
+ipcMain.handle("git:switch", (_event, payload) => switchGitBranch(payload?.cwd, payload?.branch));
+ipcMain.handle("git:create-branch", (_event, payload) => createGitBranch(payload?.cwd, payload?.branch));
 
 ipcMain.handle("workspace:review", async (_event, cwd) => {
   if (!validWorkspace(cwd)) return { ok: false, error: "工作区不存在" };
