@@ -48,9 +48,8 @@
         <div class="titlebar__drag">
           <button class="brand" id="brandButton" title="Grok Build">
             <span class="grok-mark" aria-hidden="true"></span>
-            <span class="brand__word">GROK</span><span class="brand__product">BUILD</span>
+            <span class="brand__word">GROK BUILD</span>
           </button>
-          <div class="titlebar__trail" id="windowTrail"><span>grok-build-kunkun</span><b>/</b><span>新会话</span></div>
         </div>
         <nav class="titlebar__actions" aria-label="窗口操作">
           <button class="icon-button title-action" id="themeButton" title="切换主题"><svg><use href="#i-sun"/></svg></button>
@@ -146,42 +145,19 @@
 
       <aside class="inspector" id="inspector">
         <div class="dock-tabbar">
+          <button class="dock-tab-scroll dock-tab-scroll--prev" id="dockTabPrev" title="向左查看标签页"><svg><use href="#i-chevron"/></svg></button>
           <div class="dock-tabs" id="dockTabs"></div>
+          <button class="dock-tab-scroll" id="dockTabNext" title="向右查看标签页"><svg><use href="#i-chevron"/></svg></button>
           <button class="dock-tab-add" id="dockTabAdd" title="打开功能区"><svg><use href="#i-plus"/></svg></button>
           <button class="icon-button dock-close" id="inspectorClose" title="关闭工作台"><svg><use href="#i-x"/></svg></button>
         </div>
         <div class="dock-panes">
-          <section class="dock-pane" data-dock-pane="tasks">
-            <div class="dock-pane__title"><div><small>ACTIVITY MAP</small><h2>侧边任务</h2></div><span id="turnDuration">—</span></div>
-            <div class="signal-map" aria-hidden="true"><span></span><span></span><span></span><span></span><i></i></div>
-            <div class="inspector-section">
-              <div class="section-label"><span>本轮</span><small>LIVE</small></div>
-              <ol class="activity-timeline" id="activityTimeline">
-                <li class="is-done"><i><svg><use href="#i-check"/></svg></i><span><b>载入工作区</b><small>读取 Git 与项目上下文</small></span></li>
-                <li class="is-active"><i></i><span><b>等待指令</b><small>准备调用 Grok Build</small></span></li>
-              </ol>
-            </div>
-            <div class="inspector-section inspector-section--files">
-              <div class="section-label"><span>上下文</span><small id="fileCount">0 FILES</small></div>
-              <div class="context-empty" id="contextFiles"><svg><use href="#i-folder"/></svg><span>附件和修改过的文件会显示在这里</span></div>
-            </div>
-          </section>
+          <div id="dockDynamicPanes"></div>
 
           <section class="dock-pane" data-dock-pane="review">
             <div class="dock-pane__title"><div><small>WORKTREE REVIEW</small><h2>审阅</h2></div><button class="icon-button" id="reviewRefresh"><svg><use href="#i-refresh"/></svg></button></div>
             <div class="review-summary" id="reviewSummary"></div>
             <div class="review-files" id="reviewFiles"></div>
-          </section>
-
-          <section class="dock-pane" data-dock-pane="terminal">
-            <div class="dock-pane__title"><div><small>LOCAL SHELL</small><h2>终端</h2></div><span class="terminal-cwd" id="terminalCwd"></span></div>
-            <div class="terminal-screen" id="terminalOutput"><span class="terminal-prompt">Grok Build terminal ready.</span></div>
-            <form class="terminal-composer" id="terminalForm"><span>›</span><input id="terminalCommand" autocomplete="off" spellcheck="false" placeholder="输入命令…"/><button type="submit"><svg><use href="#i-play"/></svg></button></form>
-          </section>
-
-          <section class="dock-pane" data-dock-pane="browser">
-            <form class="browser-bar" id="browserForm"><svg><use href="#i-browser"/></svg><input id="browserUrl" placeholder="输入网址或 localhost 地址" spellcheck="false"/><button type="submit">前往</button><button type="button" class="icon-button" id="browserExternal"><svg><use href="#i-external"/></svg></button></form>
-            <div class="browser-stage"><webview id="browserView" src="about:blank" partition="temp:grok-browser" webpreferences="contextIsolation=yes,nodeIntegration=no,sandbox=yes"></webview></div>
           </section>
 
           <section class="dock-pane" data-dock-pane="files">

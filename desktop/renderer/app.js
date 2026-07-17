@@ -132,6 +132,15 @@
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
       const merged = { ...defaultState, ...saved, attachments: [] };
       if (!Array.isArray(merged.dockTabs) || !merged.dockTabs.length) merged.dockTabs = structuredClone(defaultState.dockTabs);
+      merged.dockTabs = merged.dockTabs.map((tab) => ({
+        ...tab,
+        messages: tab.type === "tasks" && Array.isArray(tab.messages) ? tab.messages : (tab.type === "tasks" ? [] : undefined),
+        sessionId: tab.type === "tasks" ? (tab.sessionId || null) : undefined,
+        runId: null,
+        terminalReady: false,
+        browserReady: false,
+        output: ""
+      }));
       if (!merged.dockTabs.some((tab) => tab.id === merged.activeDockTabId)) merged.activeDockTabId = merged.dockTabs[0].id;
       return merged;
     } catch {
@@ -140,7 +149,11 @@
   }
 
   function saveState() {
-    const persistent = { ...state, attachments: [] };
+    const persistent = {
+      ...state,
+      attachments: [],
+      dockTabs: state.dockTabs.map(({ runId, terminalReady, browserReady, output, activeAssistantId, ...tab }) => tab)
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persistent));
   }
 
@@ -392,6 +405,7 @@
 
   function renderContextFiles() {
     const target = $("#contextFiles");
+    if (!target) return;
     $("#fileCount").textContent = `${state.attachments.length} FILES`;
     if (!state.attachments.length) {
       target.className = "context-empty";
@@ -412,8 +426,10 @@
       const definition = dockTypes[tab.type] || dockTypes.tasks;
       return `<button class="dock-tab ${tab.id === state.activeDockTabId ? "is-active" : ""}" data-dock-tab="${tab.id}"><svg><use href="#${definition.icon}"/></svg><span>${escapeHtml(tab.title || definition.title)}</span>${state.dockTabs.length > 1 ? `<i class="dock-tab__close" data-close-dock="${tab.id}"><svg><use href="#i-x"/></svg></i>` : ""}</button>`;
     }).join("");
+    ensureDynamicDockPanes();
     const active = state.dockTabs.find((tab) => tab.id === state.activeDockTabId) || state.dockTabs[0];
     $$("[data-dock-pane]").forEach((pane) => pane.classList.toggle("is-active", pane.dataset.dockPane === active?.type));
+    $$("[data-dock-id]").forEach((pane) => pane.classList.toggle("is-active", pane.dataset.dockId === active?.id));
     $$('[data-dock-tab]').forEach((button) => button.addEventListener("click", (event) => {
       if (event.target.closest("[data-close-dock]")) return;
       state.activeDockTabId = button.dataset.dockTab;
@@ -422,14 +438,27 @@
     $$('[data-close-dock]').forEach((button) => button.addEventListener("click", (event) => {
       event.stopPropagation(); closeDockTab(button.dataset.closeDock);
     }));
+    requestAnimationFrame(() => {
+      target.querySelector(".dock-tab.is-active")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      updateDockScrollButtons();
+    });
   }
 
   function openDockType(type) {
     const definition = dockTypes[type];
     if (!definition) return;
-    let tab = state.dockTabs.find((item) => item.type === type);
+    const multiInstance = ["tasks", "terminal", "browser"].includes(type);
+    let tab = multiInstance ? null : state.dockTabs.find((item) => item.type === type);
     if (!tab) {
-      tab = { id: `${type}-${uid()}`, type, title: definition.title };
+      const number = state.dockTabs.filter((item) => item.type === type).length + 1;
+      tab = {
+        id: `${type}-${uid()}`,
+        type,
+        title: `${definition.title}${number > 1 ? ` ${number}` : ""}`,
+        ...(type === "tasks" ? { messages: [], sessionId: null, runId: null } : {}),
+        ...(type === "terminal" ? { cwd: state.cwd, output: "", terminalReady: false, history: [] } : {}),
+        ...(type === "browser" ? { url: "about:blank" } : {})
+      };
       state.dockTabs.push(tab);
     }
     state.activeDockTabId = tab.id;
@@ -442,6 +471,9 @@
     if (state.dockTabs.length <= 1) return;
     const index = state.dockTabs.findIndex((tab) => tab.id === tabId);
     if (index < 0) return;
+    const tab = state.dockTabs[index];
+    if (tab.type === "terminal") api?.closeTerminal(tab.id);
+    if (tab.type === "tasks" && tab.runId) api?.cancelPrompt(tab.runId);
     const wasActive = state.activeDockTabId === tabId;
     state.dockTabs.splice(index, 1);
     if (wasActive) state.activeDockTabId = state.dockTabs[Math.max(0, index - 1)].id;
@@ -457,11 +489,240 @@
     return state.dockTabs.find((tab) => tab.id === state.activeDockTabId)?.type || "tasks";
   }
 
+  function dynamicDockTab(tab) {
+    return ["tasks", "terminal", "browser"].includes(tab.type);
+  }
+
+  function ensureDynamicDockPanes() {
+    const host = $("#dockDynamicPanes");
+    if (!host) return;
+    const ids = new Set(state.dockTabs.filter(dynamicDockTab).map((tab) => tab.id));
+    $$('[data-dock-id]', host).forEach((pane) => { if (!ids.has(pane.dataset.dockId)) pane.remove(); });
+    state.dockTabs.filter(dynamicDockTab).forEach((tab) => {
+      let pane = [...$$('[data-dock-id]', host)].find((item) => item.dataset.dockId === tab.id);
+      if (pane) return;
+      pane = document.createElement("section");
+      pane.className = `dock-pane dock-pane--${tab.type}`;
+      pane.dataset.dockId = tab.id;
+      pane.dataset.dockKind = tab.type;
+      if (tab.type === "tasks") initializeSideTaskPane(tab, pane);
+      if (tab.type === "terminal") initializeTerminalPane(tab, pane);
+      if (tab.type === "browser") initializeBrowserPane(tab, pane);
+      host.appendChild(pane);
+    });
+  }
+
+  function initializeSideTaskPane(tab, pane) {
+    tab.messages ||= [];
+    pane.innerHTML = `<div class="dock-pane__title side-task-head"><div><small>SHARED PROJECT MEMORY</small><h2>${escapeHtml(tab.title)}</h2></div><span><i></i>同步主对话</span></div>
+      <div class="side-task-context"><svg><use href="#i-memory"/></svg><span>共享 <b>${escapeHtml(basename(state.cwd))}</b> 记忆，并在每次发送时读取主对话的最新上下文</span></div>
+      <div class="side-task-messages" data-side-messages></div>
+      <form class="side-task-composer" data-side-form><textarea rows="1" data-side-input placeholder="在这个并行对话中继续任务…"></textarea><button type="submit" data-side-send title="发送"><svg><use href="#i-send"/></svg></button></form>`;
+    const form = $("[data-side-form]", pane); const input = $("[data-side-input]", pane);
+    form.addEventListener("submit", (event) => { event.preventDefault(); sendSideTask(tab.id); });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); sendSideTask(tab.id); }
+    });
+    input.addEventListener("input", () => { input.style.height = "auto"; input.style.height = `${Math.min(input.scrollHeight, 112)}px`; });
+    renderSideTaskPane(tab, pane);
+  }
+
+  function sideTaskMessageMarkup(message) {
+    const assistant = message.role === "assistant";
+    return `<article class="side-message side-message--${assistant ? "assistant" : "user"}" data-side-message-id="${message.id}">
+      <header>${assistant ? '<span class="grok-mark" aria-hidden="true"></span><b>Grok</b>' : "<b>你</b>"}<time>${formatTime(message.createdAt)}</time></header>
+      <div class="side-message__body">${assistant ? markdown(message.text || "") : escapeHtml(message.text || "")}</div>
+    </article>`;
+  }
+
+  function renderSideTaskPane(tab, pane = null) {
+    pane ||= [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
+    if (!pane) return;
+    const target = $("[data-side-messages]", pane);
+    target.innerHTML = tab.messages?.length
+      ? tab.messages.map(sideTaskMessageMarkup).join("")
+      : `<div class="side-task-empty"><span class="grok-mark" aria-hidden="true"></span><h3>并行处理一个新任务</h3><p>这里和主对话使用同一工作区记忆，同时保留独立的会话与回答。</p></div>`;
+    const button = $("[data-side-send]", pane);
+    button.classList.toggle("is-stop", Boolean(tab.runId));
+    button.innerHTML = `<svg><use href="#${tab.runId ? "i-stop" : "i-send"}"/></svg>`;
+    requestAnimationFrame(() => { target.scrollTop = target.scrollHeight; });
+  }
+
+  function mainConversationContext() {
+    const thread = activeThread();
+    if (!thread?.messages?.length) return "主对话目前还没有消息。";
+    return thread.messages.filter((message) => ["user", "assistant"].includes(message.role)).slice(-10)
+      .map((message) => `${message.role === "user" ? "用户" : "Grok"}: ${String(message.text || "").slice(0, 1800)}`).join("\n\n");
+  }
+
+  async function sendSideTask(tabId) {
+    const tab = state.dockTabs.find((item) => item.id === tabId && item.type === "tasks");
+    const pane = [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tabId);
+    if (!tab || !pane) return;
+    if (tab.runId) { if (api) await api.cancelPrompt(tab.runId); finishSideTask(tab, "已停止"); return; }
+    const input = $("[data-side-input]", pane); const prompt = input.value.trim();
+    if (!prompt) return;
+    tab.messages ||= [];
+    tab.messages.push({ id: uid(), role: "user", text: prompt, createdAt: Date.now() });
+    const assistant = { id: uid(), role: "assistant", text: "", createdAt: Date.now() };
+    tab.messages.push(assistant); tab.activeAssistantId = assistant.id;
+    input.value = ""; input.style.height = "auto";
+    renderSideTaskPane(tab, pane); saveState();
+    if (!api) {
+      tab.runId = `demo-${uid()}`;
+      assistant.text = `侧边任务已收到：**${prompt}**\n\n此对话已连接主对话上下文与同一项目记忆。`;
+      setTimeout(() => finishSideTask(tab, "预览完成"), 350);
+      renderSideTaskPane(tab, pane); return;
+    }
+    const sharedPrompt = `你正在 Grok Build 的侧边对话中并行处理任务。使用同一项目记忆，并参考下面主对话的最新上下文；直接完成侧边任务。\n\n<主对话最新上下文>\n${mainConversationContext()}\n</主对话最新上下文>\n\n<侧边任务>\n${prompt}\n</侧边任务>`;
+    const result = await api.sendPrompt({ clientId: tab.id, prompt: sharedPrompt, cwd: tab.cwd || state.cwd, sessionId: tab.sessionId, model: state.model, effort: state.effort, alwaysApprove: state.alwaysApprove, attachments: [] });
+    if (!result.ok) { assistant.text = `启动 Grok 时出现问题：${result.error}`; finishSideTask(tab, "启动失败"); return; }
+    tab.runId = result.runId; renderSideTaskPane(tab, pane); saveState();
+  }
+
+  function handleSideTaskEvent(tab, event) {
+    const assistant = tab.messages?.find((message) => message.id === tab.activeAssistantId) || [...(tab.messages || [])].reverse().find((message) => message.role === "assistant");
+    if (!assistant) return;
+    if (event.runId && !tab.runId) tab.runId = event.runId;
+    if (event.type === "text") assistant.text += event.data || "";
+    else if (event.type === "error") assistant.text += `\n\n**错误：** ${event.message}`;
+    else if (event.type === "end") { tab.sessionId = event.sessionId || tab.sessionId; finishSideTask(tab, event.stopReason || "完成"); return; }
+    else if (event.type === "process_exit" && event.code !== 0) { finishSideTask(tab, `进程退出 ${event.code ?? event.signal}`); return; }
+    const pane = [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
+    renderSideTaskPane(tab, pane);
+  }
+
+  function finishSideTask(tab, _reason) {
+    const assistant = tab.messages?.find((message) => message.id === tab.activeAssistantId);
+    if (assistant && !assistant.text) assistant.text = "任务已结束。";
+    tab.runId = null; tab.activeAssistantId = null;
+    saveState(); renderSideTaskPane(tab);
+  }
+
+  function initializeTerminalPane(tab, pane) {
+    tab.cwd ||= state.cwd; tab.output ||= ""; tab.history ||= [];
+    pane.innerHTML = `<div class="dock-pane__title"><div><small>NATIVE SHELL SESSION</small><h2>${escapeHtml(tab.title)}</h2></div><span class="terminal-cwd" title="${escapeHtml(tab.cwd)}">${escapeHtml(basename(tab.cwd))}</span></div>
+      <div class="terminal-toolbar"><span data-terminal-state><i></i>正在启动</span><button type="button" data-terminal-clear>清屏</button><button type="button" data-terminal-restart><svg><use href="#i-refresh"/></svg>重启</button></div>
+      <pre class="terminal-screen" data-terminal-output></pre>
+      <form class="terminal-composer" data-terminal-form><span>›</span><input data-terminal-input autocomplete="off" spellcheck="false" placeholder="输入 PowerShell / Shell 命令…"/><button type="submit"><svg><use href="#i-play"/></svg></button></form>`;
+    $("[data-terminal-output]", pane).textContent = tab.output || "Grok Build native terminal ready.\n";
+    $("[data-terminal-form]", pane).addEventListener("submit", (event) => { event.preventDefault(); submitTerminalCommand(tab.id); });
+    const input = $("[data-terminal-input]", pane); let historyIndex = tab.history.length;
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowUp" && tab.history.length) { event.preventDefault(); historyIndex = Math.max(0, historyIndex - 1); input.value = tab.history[historyIndex] || ""; }
+      if (event.key === "ArrowDown" && tab.history.length) { event.preventDefault(); historyIndex = Math.min(tab.history.length, historyIndex + 1); input.value = tab.history[historyIndex] || ""; }
+      if (event.ctrlKey && event.key.toLowerCase() === "l") { event.preventDefault(); clearTerminal(tab); }
+    });
+    $("[data-terminal-clear]", pane).addEventListener("click", () => clearTerminal(tab));
+    $("[data-terminal-restart]", pane).addEventListener("click", async () => { await api?.closeTerminal(tab.id); tab.terminalReady = false; tab.output = ""; await ensureTerminalSession(tab, pane); });
+  }
+
+  function stripAnsi(value) {
+    return String(value || "").replace(/[\u001b\u009b][[\]()#;?]*(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d\/#&.:=?%@~_]+)*)?\u0007|(?:(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))/g, "").replace(/\r(?!\n)/g, "");
+  }
+
+  function appendTerminalOutput(tab, value) {
+    tab.output = `${tab.output || ""}${stripAnsi(value)}`.slice(-200_000);
+    const pane = [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
+    const output = pane && $("[data-terminal-output]", pane);
+    if (output) { output.textContent = tab.output; output.scrollTop = output.scrollHeight; }
+  }
+
+  async function ensureTerminalSession(tab, pane = null) {
+    pane ||= [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
+    if (!pane || tab.terminalReady) return;
+    const status = $("[data-terminal-state]", pane);
+    if (!api) { status.innerHTML = "<i></i>桌面预览"; return; }
+    status.innerHTML = "<i></i>正在启动";
+    const result = await api.createTerminal(tab.id, tab.cwd || state.cwd);
+    if (!result.ok) { status.classList.add("is-error"); status.textContent = result.error; appendTerminalOutput(tab, `${result.error}\n`); return; }
+    tab.terminalReady = true; tab.shell = result.shell;
+    status.classList.remove("is-error"); status.innerHTML = `<i></i>${escapeHtml(result.shell)} 在线`;
+    appendTerminalOutput(tab, tab.output ? "" : `${result.shell} · ${result.cwd}\n`);
+  }
+
+  async function submitTerminalCommand(tabId) {
+    const tab = state.dockTabs.find((item) => item.id === tabId && item.type === "terminal");
+    const pane = [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tabId);
+    if (!tab || !pane) return;
+    await ensureTerminalSession(tab, pane);
+    const input = $("[data-terminal-input]", pane); const command = input.value;
+    if (!command.trim()) return;
+    tab.history ||= []; tab.history.push(command); tab.history = tab.history.slice(-100);
+    appendTerminalOutput(tab, `\n› ${command}\n`); input.value = "";
+    const result = api ? await api.writeTerminal(tab.id, `${command}\n`) : { ok: true };
+    if (!result.ok) appendTerminalOutput(tab, `${result.error}\n`);
+  }
+
+  function clearTerminal(tab) {
+    tab.output = "";
+    const pane = [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
+    const output = pane && $("[data-terminal-output]", pane); if (output) output.textContent = "";
+  }
+
+  function normalizeBrowserUrl(value) {
+    const raw = String(value || "").trim(); if (!raw) return "about:blank";
+    if (/^(about:|file:)/i.test(raw)) return raw;
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return /^(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(raw) ? `http://${raw}` : `https://${raw}`;
+  }
+
+  function initializeBrowserPane(tab, pane) {
+    tab.url ||= "about:blank";
+    pane.innerHTML = `<form class="browser-bar" data-browser-form>
+      <button type="button" class="icon-button browser-nav browser-nav--back" data-browser-action="back" title="后退"><svg><use href="#i-chevron"/></svg></button>
+      <button type="button" class="icon-button browser-nav" data-browser-action="forward" title="前进"><svg><use href="#i-chevron"/></svg></button>
+      <button type="button" class="icon-button browser-nav" data-browser-action="reload" title="刷新"><svg><use href="#i-refresh"/></svg></button>
+      <input data-browser-url value="${escapeHtml(tab.url === "about:blank" ? "" : tab.url)}" placeholder="输入网址或 localhost 地址" spellcheck="false"/>
+      <button type="submit">前往</button><button type="button" class="icon-button" data-browser-action="external" title="在系统浏览器打开"><svg><use href="#i-external"/></svg></button></form>
+      <div class="browser-status" data-browser-status><i></i><span>输入地址后开始浏览</span></div>
+      <div class="browser-stage"><webview data-browser-view src="${escapeHtml(tab.url)}" partition="persist:grok-browser" webpreferences="contextIsolation=yes,nodeIntegration=no,sandbox=yes"></webview></div>`;
+    const view = $("[data-browser-view]", pane); const input = $("[data-browser-url]", pane); const status = $("[data-browser-status]", pane);
+    const updateLocation = (url) => { tab.url = url; input.value = url === "about:blank" ? "" : url; saveState(); };
+    view.addEventListener("dom-ready", () => { tab.browserReady = true; status.className = "browser-status is-ready"; status.innerHTML = "<i></i><span>页面已就绪</span>"; });
+    view.addEventListener("did-start-loading", () => { status.className = "browser-status is-loading"; status.innerHTML = "<i></i><span>正在载入…</span>"; });
+    view.addEventListener("did-stop-loading", () => { status.className = "browser-status is-ready"; status.innerHTML = "<i></i><span>载入完成</span>"; try { updateLocation(view.getURL()); } catch {} });
+    view.addEventListener("did-navigate", (event) => updateLocation(event.url));
+    view.addEventListener("did-navigate-in-page", (event) => updateLocation(event.url));
+    view.addEventListener("did-fail-load", (event) => { if (event.errorCode === -3) return; status.className = "browser-status is-error"; status.innerHTML = `<i></i><span>${escapeHtml(event.errorDescription || "页面载入失败")}</span>`; });
+    $("[data-browser-form]", pane).addEventListener("submit", (event) => { event.preventDefault(); navigateBrowser(tab, pane, input.value); });
+    $$('[data-browser-action]', pane).forEach((button) => button.addEventListener("click", () => {
+      try {
+        if (button.dataset.browserAction === "back" && view.canGoBack()) view.goBack();
+        if (button.dataset.browserAction === "forward" && view.canGoForward()) view.goForward();
+        if (button.dataset.browserAction === "reload") view.reload();
+        if (button.dataset.browserAction === "external") api?.openExternal(view.getURL() || normalizeBrowserUrl(input.value));
+      } catch (error) { status.className = "browser-status is-error"; status.textContent = error.message; }
+    }));
+  }
+
+  function navigateBrowser(tab, pane, value) {
+    const url = normalizeBrowserUrl(value); const view = $("[data-browser-view]", pane); const input = $("[data-browser-url]", pane);
+    tab.url = url; input.value = url; saveState();
+    try {
+      if (typeof view.loadURL === "function" && tab.browserReady) view.loadURL(url).catch(() => view.setAttribute("src", url));
+      else view.setAttribute("src", url);
+    } catch { view.setAttribute("src", url); }
+  }
+
+  function updateDockScrollButtons() {
+    const tabs = $("#dockTabs"); if (!tabs) return;
+    const overflow = tabs.scrollWidth > tabs.clientWidth + 2;
+    $("#dockTabPrev").disabled = !overflow || tabs.scrollLeft <= 1;
+    $("#dockTabNext").disabled = !overflow || tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 1;
+  }
+
   function refreshActiveDockPane() {
     const type = activeDockType();
     if (type === "review") refreshReview();
     if (type === "files") refreshWorkspaceFiles();
-    if (type === "terminal") $("#terminalCwd").textContent = basename(state.cwd);
+    const tab = state.dockTabs.find((item) => item.id === state.activeDockTabId);
+    if (tab && ["tasks", "terminal", "browser"].includes(type)) {
+      ensureDynamicDockPanes();
+      const pane = [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
+      if (type === "tasks") renderSideTaskPane(tab, pane);
+      if (type === "terminal") ensureTerminalSession(tab, pane);
+    }
   }
 
   async function refreshReview() {
@@ -524,8 +785,7 @@
   }
 
   function updateWindowTrail() {
-    const thread = activeThread();
-    $("#windowTrail").innerHTML = `<span>${escapeHtml(basename(state.cwd))}</span><b>/</b><span>${escapeHtml(thread?.title || "新会话")}</span>`;
+    // The title bar intentionally stays fixed as "GROK BUILD".
   }
 
   function updateSwitches() {
@@ -558,12 +818,13 @@
     if (running) {
       startedAt = Date.now();
       clearInterval(durationTimer);
-      durationTimer = setInterval(() => $("#turnDuration").textContent = `${((Date.now() - startedAt) / 1000).toFixed(1)} S`, 100);
+      durationTimer = setInterval(() => { const label = $("#turnDuration"); if (label) label.textContent = `${((Date.now() - startedAt) / 1000).toFixed(1)} S`; }, 100);
     } else clearInterval(durationTimer);
   }
 
   function addTimeline(title, detail, status = "done") {
     const list = $("#activityTimeline");
+    if (!list) return;
     if (list.children.length > 6) list.removeChild(list.children[1]);
     list.insertAdjacentHTML("beforeend", `<li class="is-${status}"><i>${status === "done" ? '<svg><use href="#i-check"/></svg>' : ""}</i><span><b>${escapeHtml(title)}</b><small>${escapeHtml(detail)}</small></span></li>`);
   }
@@ -589,7 +850,7 @@
       simulatePrompt(prompt);
       return;
     }
-    const result = await api.sendPrompt({ prompt, cwd: thread.cwd || state.cwd, sessionId: thread.sessionId, model: state.model, effort: state.effort, alwaysApprove: state.alwaysApprove, attachments: state.attachments });
+    const result = await api.sendPrompt({ clientId: "main", prompt, cwd: thread.cwd || state.cwd, sessionId: thread.sessionId, model: state.model, effort: state.effort, alwaysApprove: state.alwaysApprove, attachments: state.attachments });
     if (!result.ok) { activeAssistantMessage.text = `启动 Grok 时出现问题：${result.error}`; toast("Runtime 错误", result.error); finishRun("启动失败"); renderMessages(); return; }
     activeRun = result.runId;
     state.attachments = [];
@@ -608,6 +869,8 @@
   }
 
   function handleRunEvent(event) {
+    const sideTab = state.dockTabs.find((tab) => tab.type === "tasks" && (tab.id === event.clientId || (tab.runId && tab.runId === event.runId)));
+    if (sideTab) { handleSideTaskEvent(sideTab, event); return; }
     if (!activeRun || event.runId !== activeRun) return;
     if (event.type === "text") {
       activeAssistantMessage.text += event.data || "";
@@ -809,10 +1072,10 @@
       if (!result.ok) { toast("退出登录失败", result.error); return; }
       authState = result.info; updateAccountUI(); toast("已退出 Grok", "本地 Runtime 仍可使用第三方模型"); return;
     }
-    showSettingsPage("account"); $("#settingsBackdrop").hidden = false;
-    $("#authProgress").hidden = false; $("#authProgressText").textContent = "正在启动 Grok OAuth 登录…";
+    $("#authProgress").hidden = false; $("#authProgressText").textContent = "正在打开默认浏览器并启动 Grok OAuth 登录…";
     const result = await api.login();
     if (!result.ok) { $("#authProgressText").textContent = result.error; toast("登录启动失败", result.error); }
+    else toast("正在打开 Grok 登录", "请在默认浏览器中完成账号登录");
   }
 
   async function openSettings(page = "general") {
@@ -957,7 +1220,7 @@
   }
 
   async function detectRuntime() {
-    if (!api) { runtimeState = { connected: true, version: "界面预览", binary: null }; updateAccountUI(); return; }
+    if (!api) { runtimeState = { connected: true, version: "界面预览", binary: null }; updateAccountUI(); return runtimeState; }
     const info = await api.runtimeInfo();
     runtimeState = info;
     runtimeModels = [
@@ -973,6 +1236,20 @@
     $("#settingsRuntimeVersion").textContent = info.version || "—";
     updateAccountUI();
     if (!$("#settingsBackdrop").hidden && nativeConfig.values) renderNativeSettings();
+    return info;
+  }
+
+  async function refreshRuntimeDetection() {
+    const button = $("#refreshRuntime");
+    button.disabled = true; button.classList.add("is-refreshing");
+    const previousPath = $("#settingsRuntimePath").textContent;
+    $("#settingsRuntimePath").textContent = "正在重新检测 Grok Runtime…";
+    try {
+      const info = await detectRuntime();
+      toast(info?.connected ? "Grok Runtime 已连接" : "Runtime 检测完成", info?.version || info?.binary || previousPath || "检测已完成");
+    } finally {
+      button.disabled = false; button.classList.remove("is-refreshing");
+    }
   }
 
   function bindStaticActions() {
@@ -993,31 +1270,12 @@
     $("#inspectorToggle").addEventListener("click", () => { state.inspectorOpen = !state.inspectorOpen; saveState(); updateLayout(); if (state.inspectorOpen) refreshActiveDockPane(); });
     $("#inspectorClose").addEventListener("click", () => { state.inspectorOpen = false; saveState(); updateLayout(); });
     $("#dockTabAdd").addEventListener("click", (event) => { event.stopPropagation(); $("#dockTabPicker").hidden = !$("#dockTabPicker").hidden; });
+    $("#dockTabPrev").addEventListener("click", () => $("#dockTabs").scrollBy({ left: -220, behavior: "smooth" }));
+    $("#dockTabNext").addEventListener("click", () => $("#dockTabs").scrollBy({ left: 220, behavior: "smooth" }));
+    $("#dockTabs").addEventListener("scroll", updateDockScrollButtons);
+    window.addEventListener("resize", updateDockScrollButtons);
     $("#reviewRefresh").addEventListener("click", refreshReview);
     $("#filesRefresh").addEventListener("click", refreshWorkspaceFiles);
-    $("#terminalForm").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const input = $("#terminalCommand"); const command = input.value.trim(); if (!command) return;
-      const output = $("#terminalOutput");
-      output.insertAdjacentHTML("beforeend", `<div class="terminal-command-line">› ${escapeHtml(command)}</div>`);
-      input.value = ""; output.scrollTop = output.scrollHeight;
-      if (!api) { output.insertAdjacentHTML("beforeend", '<div>桌面模式下执行本地命令。</div>'); return; }
-      const result = await api.runTerminalCommand(state.cwd, command);
-      if (!result.ok) output.insertAdjacentHTML("beforeend", `<div class="terminal-error">${escapeHtml(result.error)}</div>`);
-      else {
-        if (result.stdout) output.insertAdjacentHTML("beforeend", `<div>${escapeHtml(result.stdout)}</div>`);
-        if (result.stderr) output.insertAdjacentHTML("beforeend", `<div class="terminal-error">${escapeHtml(result.stderr)}</div>`);
-        output.insertAdjacentHTML("beforeend", `<div class="terminal-prompt">exit ${result.code}</div>`);
-      }
-      output.scrollTop = output.scrollHeight;
-    });
-    $("#browserForm").addEventListener("submit", (event) => {
-      event.preventDefault(); let url = $("#browserUrl").value.trim();
-      if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
-      $("#browserUrl").value = url;
-      const view = $("#browserView"); if (typeof view.loadURL === "function") view.loadURL(url); else view.src = url;
-    });
-    $("#browserExternal").addEventListener("click", () => api?.openExternal($("#browserUrl").value));
     $("#approvalSwitch").addEventListener("click", toggleApproval);
     $("#settingsButton").addEventListener("click", () => openSettings("general")); $$('[data-close-modal]').forEach((button) => button.addEventListener("click", closeSettings));
     $("#settingsBackdrop").addEventListener("click", (event) => { if (event.target === $("#settingsBackdrop")) closeSettings(); });
@@ -1025,7 +1283,7 @@
     $("#paletteInput").addEventListener("input", (event) => renderPalette(event.target.value));
     $("#themeButton").addEventListener("click", () => { state.theme = resolvedTheme() === "dark" ? "light" : "dark"; saveState(); updateLayout(); });
     $("#themeSelect").addEventListener("change", (event) => { state.theme = event.target.value; saveState(); updateLayout(); });
-    $("#refreshRuntime").addEventListener("click", detectRuntime);
+    $("#refreshRuntime").addEventListener("click", refreshRuntimeDetection);
     $("#runtimeCard").addEventListener("click", (event) => { event.stopPropagation(); $("#accountPopover").hidden = !$("#accountPopover").hidden; });
     $("#profileMenuButton").addEventListener("click", () => openSettings("account"));
     $("#settingsMenuButton").addEventListener("click", () => openSettings("general"));
@@ -1091,11 +1349,24 @@
 
   bindStaticActions();
   if (api) api.onRunEvent(handleRunEvent);
+  if (api) api.onTerminalEvent((event) => {
+    const tab = state.dockTabs.find((item) => item.type === "terminal" && item.id === event.terminalId);
+    if (!tab) return;
+    if (event.type === "output") appendTerminalOutput(tab, event.data);
+    if (event.type === "error") appendTerminalOutput(tab, `\n${event.message}\n`);
+    if (event.type === "exit") {
+      tab.terminalReady = false;
+      if (!event.closing) appendTerminalOutput(tab, `\n[终端进程已退出：${event.code ?? event.signal ?? "unknown"}]\n`);
+      const pane = [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
+      const status = pane && $("[data-terminal-state]", pane); if (status) { status.classList.add("is-error"); status.textContent = "会话已结束"; }
+    }
+  });
   if (api) api.onAuthEvent((event) => {
     const progress = $("#authProgress"); const text = $("#authProgressText"); progress.hidden = false;
     if (event.kind === "output") text.textContent = `${text.textContent}\n${event.text}`.trim().slice(-6000);
     else text.textContent = event.text;
     text.scrollTop = text.scrollHeight;
+    if (event.kind === "browser") toast("Grok 登录页面已打开", "请在浏览器完成账号登录");
     if (event.kind === "complete") setTimeout(async () => { await refreshAuthInfo(); await detectRuntime(); progress.hidden = true; toast("Grok 登录完成", authState.email || authState.name); }, 700);
     if (event.kind === "error") toast("Grok 登录状态", event.text);
   });

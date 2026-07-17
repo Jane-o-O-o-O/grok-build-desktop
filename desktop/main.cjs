@@ -19,6 +19,8 @@ const { readAccountInfo } = require("./account-info.cjs");
 const { createGitBranch, readGitInfo, switchGitBranch } = require("./git-workspace.cjs");
 
 const activeRuns = new Map();
+const runClients = new Map();
+const terminalSessions = new Map();
 let mainWindow;
 let activeAuthRun = null;
 
@@ -166,7 +168,8 @@ function runtimeInfo() {
 }
 
 function emit(data) {
-  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("grok:event", data);
+  const clientId = data?.runId ? runClients.get(data.runId) : null;
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("grok:event", clientId ? { clientId, ...data } : data);
 }
 
 function parseLines(runId, stream, source) {
@@ -265,6 +268,7 @@ ipcMain.handle("auth:login", () => {
     const text = String(chunk).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "");
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("auth:event", { kind, text });
   };
+  send("browser", "Grok Runtime 正在默认浏览器中打开登录页面");
   child.stdout.setEncoding("utf8"); child.stderr.setEncoding("utf8");
   child.stdout.on("data", (chunk) => send("output", chunk));
   child.stderr.on("data", (chunk) => send("output", chunk));
@@ -404,6 +408,66 @@ ipcMain.handle("workspace:read", async (_event, { cwd, file }) => {
   }
 });
 
+function emitTerminal(data) {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("terminal:event", data);
+}
+
+function closeTerminalSession(terminalId) {
+  const session = terminalSessions.get(terminalId);
+  if (!session) return false;
+  terminalSessions.delete(terminalId);
+  session.closing = true;
+  try { session.child.stdin.end(); } catch {}
+  try { session.child.kill(); } catch {}
+  return true;
+}
+
+ipcMain.handle("terminal:create", async (_event, { terminalId, cwd }) => {
+  if (typeof terminalId !== "string" || !terminalId || !validWorkspace(cwd)) return { ok: false, error: "终端参数无效" };
+  const existing = terminalSessions.get(terminalId);
+  if (existing && !existing.child.killed) return { ok: true, terminalId, cwd: existing.cwd, shell: existing.shell };
+  const shellExe = process.platform === "win32" ? "powershell.exe" : (process.env.SHELL || "/bin/sh");
+  const shellArgs = process.platform === "win32"
+    ? ["-NoLogo", "-NoProfile", "-NoExit", "-ExecutionPolicy", "Bypass", "-Command", "-"]
+    : ["-l"];
+  try {
+    const child = spawn(shellExe, shellArgs, {
+      cwd,
+      windowsHide: true,
+      env: { ...process.env, ...providerEnvironment(), TERM: process.env.TERM || "xterm-256color" },
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+    const session = { terminalId, cwd, shell: path.basename(shellExe), child, closing: false };
+    terminalSessions.set(terminalId, session);
+    const forward = (stream, kind) => {
+      stream.setEncoding("utf8");
+      stream.on("data", (data) => emitTerminal({ terminalId, type: "output", kind, data: String(data) }));
+    };
+    forward(child.stdout, "stdout");
+    forward(child.stderr, "stderr");
+    child.on("error", (error) => emitTerminal({ terminalId, type: "error", message: error.message }));
+    child.on("exit", (code, signal) => {
+      if (terminalSessions.get(terminalId)?.child === child) terminalSessions.delete(terminalId);
+      emitTerminal({ terminalId, type: "exit", code, signal, closing: session.closing });
+    });
+    if (process.platform === "win32") {
+      child.stdin.write("[Console]::OutputEncoding = [Text.UTF8Encoding]::new(); $OutputEncoding = [Text.UTF8Encoding]::new()\n");
+    }
+    return { ok: true, terminalId, cwd, shell: session.shell };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle("terminal:write", async (_event, { terminalId, data }) => {
+  const session = terminalSessions.get(terminalId);
+  if (!session || session.child.killed) return { ok: false, error: "终端会话已结束" };
+  if (typeof data !== "string" || data.length > 100_000) return { ok: false, error: "终端输入无效" };
+  try { session.child.stdin.write(data); return { ok: true }; } catch (error) { return { ok: false, error: error.message }; }
+});
+
+ipcMain.handle("terminal:close", (_event, terminalId) => ({ ok: true, closed: closeTerminalSession(terminalId) }));
+
 ipcMain.handle("terminal:run", async (_event, { cwd, command }) => {
   if (!validWorkspace(cwd) || typeof command !== "string" || !command.trim()) return { ok: false, error: "请输入命令" };
   return new Promise((resolve) => {
@@ -431,6 +495,7 @@ ipcMain.handle("grok:prompt", async (_event, payload) => {
   if (!payload.cwd || !fs.existsSync(payload.cwd)) return { ok: false, error: "Workspace path does not exist." };
 
   const runId = crypto.randomUUID();
+  runClients.set(runId, String(payload.clientId || "main"));
   const child = spawn(binary, buildArgs(payload), {
     cwd: payload.cwd,
     windowsHide: true,
@@ -447,8 +512,9 @@ ipcMain.handle("grok:prompt", async (_event, payload) => {
   parseLines(runId, child.stderr, "stderr");
   child.on("error", (error) => emit({ runId, type: "error", message: error.message }));
   child.on("exit", (code, signal) => {
-    activeRuns.delete(runId);
     emit({ runId, type: "process_exit", code, signal });
+    activeRuns.delete(runId);
+    runClients.delete(runId);
   });
   return { ok: true, runId };
 });
@@ -512,6 +578,7 @@ function createWindow() {
 app.whenReady().then(createWindow);
 app.on("window-all-closed", () => {
   for (const child of activeRuns.values()) child.kill();
+  for (const terminalId of [...terminalSessions.keys()]) closeTerminalSession(terminalId);
   if (process.platform !== "darwin") app.quit();
 });
 app.on("activate", () => {

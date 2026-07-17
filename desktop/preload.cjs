@@ -28,6 +28,9 @@ contextBridge.exposeInMainWorld("grokDesktop", {
   listWorkspaceFiles: (cwd) => ipcRenderer.invoke("workspace:files", cwd),
   readWorkspaceFile: (cwd, file) => ipcRenderer.invoke("workspace:read", { cwd, file }),
   runTerminalCommand: (cwd, command) => ipcRenderer.invoke("terminal:run", { cwd, command }),
+  createTerminal: (terminalId, cwd) => ipcRenderer.invoke("terminal:create", { terminalId, cwd }),
+  writeTerminal: (terminalId, data) => ipcRenderer.invoke("terminal:write", { terminalId, data }),
+  closeTerminal: (terminalId) => ipcRenderer.invoke("terminal:close", terminalId),
   sendPrompt: (payload) => ipcRenderer.invoke("grok:prompt", payload),
   cancelPrompt: (runId) => ipcRenderer.invoke("grok:cancel", runId),
   minimize: () => ipcRenderer.send("window:minimize"),
@@ -48,6 +51,15 @@ contextBridge.exposeInMainWorld("grokDesktop", {
     ipcRenderer.on("auth:event", wrapped);
     return () => {
       ipcRenderer.removeListener("auth:event", wrapped);
+      listeners.delete(callback);
+    };
+  },
+  onTerminalEvent: (callback) => {
+    const wrapped = (_event, data) => callback(data);
+    listeners.set(callback, wrapped);
+    ipcRenderer.on("terminal:event", wrapped);
+    return () => {
+      ipcRenderer.removeListener("terminal:event", wrapped);
       listeners.delete(callback);
     };
   }

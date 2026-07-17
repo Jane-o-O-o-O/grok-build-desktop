@@ -357,7 +357,7 @@ api_backend = "chat_completions"
 
 ## 右侧多标签工作台
 
-右侧区域采用浏览器式标签页。点击 `+` 可以同时打开多个功能：
+右侧区域采用浏览器式标签页。点击 `+` 可以同时打开多个功能；终端、浏览器和侧边任务都可创建多个互不干扰的实例。标签超过可视宽度后，可用左右箭头平滑查看并切换。
 
 ### 审阅
 
@@ -368,15 +368,19 @@ api_backend = "chat_completions"
 
 ### 终端
 
-- 在当前工作区执行本地命令
-- 展示 stdout / stderr / exit code
-- Windows PowerShell UTF-8 输出
-- 输出大小与执行时间限制
+- 每个标签启动一份持久的原生 PowerShell / Shell 会话
+- 初始路径就是创建标签时的当前项目目录
+- `cd`、环境变量和会话状态在后续命令中持续生效
+- 实时展示 stdout / stderr，支持命令历史、清屏和重启
+- 多个终端拥有各自的进程、输出与输入历史
 
 ### 浏览器
 
 - 内嵌 WebView
 - 支持网页和 localhost 服务
+- 前进、后退、刷新、地址导航与载入状态
+- 无协议的 localhost 地址自动使用 HTTP，普通域名自动使用 HTTPS
+- 每个浏览器标签保留独立的页面和导航历史
 - Sandbox / Context Isolation
 - 系统浏览器打开
 
@@ -390,10 +394,10 @@ api_backend = "chat_completions"
 
 ### 侧边任务
 
-- Activity Map
-- 当前任务时间线
-- 上下文文件
-- 工具许可状态
+- 和主区域一致的独立流式对话页面
+- 每个标签拥有独立的 Runtime 会话、消息历史与停止状态
+- 自动读取主对话的最新上下文，并复用同一工作区的原生 Memory
+- 可同时运行多个侧边对话，互不覆盖
 
 ---
 
@@ -431,6 +435,8 @@ api_backend = "chat_completions"
 ```text
 grok login --oauth
 ```
+
+点击登录后直接由原生 Runtime 在系统默认浏览器中打开 OAuth 页面。账号页的“重新检测”会重新扫描 Runtime 路径、版本与模型目录，并在界面给出明确的检测进度和结果。
 
 退出调用：
 
