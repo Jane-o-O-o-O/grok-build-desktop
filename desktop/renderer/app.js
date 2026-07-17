@@ -26,6 +26,7 @@
   let state = loadState();
   let activeRun = null;
   let activeAssistantMessage = null;
+  let activeRunDiagnostics = [];
   let startedAt = 0;
   let durationTimer = null;
   let runtimeModels = [{ id: "auto", label: "自动模型" }];
@@ -840,6 +841,7 @@
     if (!thread.messages.length) thread.title = prompt.replace(/\s+/g, " ").slice(0, 34);
     thread.messages.push({ id: uid(), role: "user", text: prompt, createdAt: Date.now() });
     activeAssistantMessage = { id: uid(), role: "assistant", text: "", thought: "", createdAt: Date.now() };
+    activeRunDiagnostics = [];
     thread.messages.push(activeAssistantMessage);
     thread.updatedAt = Date.now();
     input.value = ""; input.style.height = "auto";
@@ -880,6 +882,8 @@
     } else if (event.type === "thought") {
       activeAssistantMessage.thought = (activeAssistantMessage.thought || "") + (event.data || "");
     } else if (event.type === "diagnostic") {
+      activeRunDiagnostics.push(String(event.data || ""));
+      activeRunDiagnostics = activeRunDiagnostics.slice(-8);
       const thread = activeThread();
       const existing = thread.messages.at(-2)?.kind === "tool" ? thread.messages.at(-2) : null;
       if (existing) existing.text = `${existing.text}\n${event.data}`.slice(-2400);
@@ -892,6 +896,10 @@
       thread.sessionId = event.sessionId || thread.sessionId;
       finishRun(event.stopReason || "完成");
     } else if (event.type === "process_exit" && event.code !== 0) {
+      if (activeAssistantMessage) {
+        const detail = activeRunDiagnostics.slice(-3).join("\n").trim();
+        activeAssistantMessage.text += `\n\n**Runtime 退出（${event.code ?? event.signal}）**${detail ? `\n\n\`\`\`text\n${detail}\n\`\`\`` : ""}`;
+      }
       finishRun(`进程退出 ${event.code ?? event.signal}`);
     }
   }
@@ -900,7 +908,7 @@
     const thread = activeThread();
     if (thread && activeAssistantMessage && !activeAssistantMessage.text) activeAssistantMessage.text = "任务已结束。";
     if (thread) thread.updatedAt = Date.now();
-    activeRun = null; activeAssistantMessage = null;
+    activeRun = null; activeAssistantMessage = null; activeRunDiagnostics = [];
     setRunning(false); saveState(); renderThreads(); renderMessages();
     addTimeline("任务结束", reason, "done");
   }

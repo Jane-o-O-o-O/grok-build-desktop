@@ -24,9 +24,10 @@ const terminalSessions = new Map();
 let mainWindow;
 let activeAuthRun = null;
 let activeAuthUrl = null;
+let cachedSystemProxyEnvironment = {};
 
 async function environmentWithSystemProxy(baseEnv, targetUrl) {
-  const env = { ...baseEnv };
+  const env = { ...baseEnv, ...cachedSystemProxyEnvironment };
   if (env.HTTPS_PROXY || env.https_proxy || env.ALL_PROXY || env.all_proxy) return env;
   try {
     const rule = await session.defaultSession.resolveProxy(targetUrl);
@@ -36,6 +37,10 @@ async function environmentWithSystemProxy(baseEnv, targetUrl) {
       const proxyUrl = `http://${address}`;
       env.HTTPS_PROXY = proxyUrl; env.HTTP_PROXY = proxyUrl;
       env.https_proxy = proxyUrl; env.http_proxy = proxyUrl;
+      cachedSystemProxyEnvironment = {
+        HTTPS_PROXY: proxyUrl, HTTP_PROXY: proxyUrl,
+        https_proxy: proxyUrl, http_proxy: proxyUrl
+      };
     }
   } catch {}
   return env;
@@ -113,6 +118,10 @@ function providerEnvironment() {
   return Object.fromEntries(loadProviderStore().providers.map((provider) => [provider.envKey, decryptApiKey(provider.secret)]).filter(([, key]) => key));
 }
 
+function runtimeEnvironment(extra = {}) {
+  return { ...process.env, ...cachedSystemProxyEnvironment, ...providerEnvironment(), ...extra };
+}
+
 function publicProviders(store = loadProviderStore()) {
   return store.providers.map(({ secret, ...provider }) => ({
     ...provider,
@@ -164,13 +173,13 @@ function runtimeInfo() {
   let models = [];
   let defaultModel = null;
   if (binary) {
-    const env = { ...process.env, ...providerEnvironment() };
+    const env = runtimeEnvironment();
     const result = spawnSync(binary, ["--version"], { encoding: "utf8", windowsHide: true, timeout: 5000, env });
     version = (result.stdout || result.stderr || "").trim() || null;
     const modelResult = spawnSync(binary, ["models"], { encoding: "utf8", windowsHide: true, timeout: 10000, env });
     const modelOutput = `${modelResult.stdout || ""}\n${modelResult.stderr || ""}`;
     defaultModel = modelOutput.match(/Default model:\s*([^\s]+)/i)?.[1] || null;
-    models = [...modelOutput.matchAll(/^\s*\*\s+([^\s(]+)/gm)].map((match) => match[1]);
+    models = [...new Set([...modelOutput.matchAll(/^\s*(?:\*|-)\s+([^\s(]+)/gm)].map((match) => match[1]))];
   }
   return {
     connected: Boolean(binary),
@@ -279,7 +288,7 @@ ipcMain.handle("auth:login", async () => {
     if (activeAuthUrl) await shell.openExternal(activeAuthUrl);
     return { ok: true, running: true, browserOpened: Boolean(activeAuthUrl) };
   }
-  const authEnv = await environmentWithSystemProxy({ ...process.env, ...providerEnvironment() }, "https://auth.x.ai/.well-known/openid-configuration");
+  const authEnv = await environmentWithSystemProxy(runtimeEnvironment(), "https://auth.x.ai/.well-known/openid-configuration");
   const child = spawn(binary, ["login", "--oauth"], {
     cwd: app.getPath("home"), windowsHide: true,
     env: authEnv, stdio: ["ignore", "pipe", "pipe"]
@@ -316,7 +325,7 @@ ipcMain.handle("auth:login", async () => {
 ipcMain.handle("auth:logout", () => {
   const binary = locateGrok();
   if (!binary) return { ok: false, error: "未检测到 Grok Runtime" };
-  const result = spawnSync(binary, ["logout"], { encoding: "utf8", windowsHide: true, timeout: 30_000, env: { ...process.env, ...providerEnvironment() } });
+  const result = spawnSync(binary, ["logout"], { encoding: "utf8", windowsHide: true, timeout: 30_000, env: runtimeEnvironment() });
   if (result.error || result.status !== 0) return { ok: false, error: result.error?.message || result.stderr || "退出登录失败" };
   return { ok: true, info: authInfo() };
 });
@@ -470,7 +479,7 @@ ipcMain.handle("terminal:create", async (_event, { terminalId, cwd }) => {
     const child = spawn(shellExe, shellArgs, {
       cwd,
       windowsHide: true,
-      env: { ...process.env, ...providerEnvironment(), TERM: process.env.TERM || "xterm-256color" },
+      env: runtimeEnvironment({ TERM: process.env.TERM || "xterm-256color" }),
       stdio: ["pipe", "pipe", "pipe"]
     });
     const session = { terminalId, cwd, shell: path.basename(shellExe), child, closing: false };
@@ -511,7 +520,7 @@ ipcMain.handle("terminal:run", async (_event, { cwd, command }) => {
     const shellArgs = process.platform === "win32"
       ? ["-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", `[Console]::OutputEncoding = [Text.UTF8Encoding]::new(); ${command}`]
       : ["-lc", command];
-    const child = spawn(shellExe, shellArgs, { cwd, windowsHide: true, env: { ...process.env, ...providerEnvironment() } });
+    const child = spawn(shellExe, shellArgs, { cwd, windowsHide: true, env: runtimeEnvironment() });
     let stdout = ""; let stderr = ""; let settled = false;
     const cap = (current, chunk) => `${current}${chunk}`.slice(-200_000);
     child.stdout.on("data", (chunk) => { stdout = cap(stdout, chunk); });
@@ -532,12 +541,12 @@ ipcMain.handle("grok:prompt", async (_event, payload) => {
 
   const runId = crypto.randomUUID();
   runClients.set(runId, String(payload.clientId || "main"));
+  const runtimeEnv = await environmentWithSystemProxy(runtimeEnvironment(), "https://auth.x.ai/.well-known/openid-configuration");
   const child = spawn(binary, buildArgs(payload), {
     cwd: payload.cwd,
     windowsHide: true,
     env: {
-      ...process.env,
-      ...providerEnvironment(),
+      ...runtimeEnv,
       GROK_LAUNCH_SOURCE: "grok-desktop",
       GROK_CLIENT_NAME: "grok-desktop"
     },
@@ -611,7 +620,10 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  await environmentWithSystemProxy(process.env, "https://auth.x.ai/.well-known/openid-configuration");
+  createWindow();
+});
 app.on("window-all-closed", () => {
   for (const child of activeRuns.values()) child.kill();
   for (const terminalId of [...terminalSessions.keys()]) closeTerminalSession(terminalId);
