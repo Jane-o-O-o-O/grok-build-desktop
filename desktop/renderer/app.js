@@ -33,6 +33,14 @@
   let durationTimer = null;
   let runtimeModels = [{ id: "auto", label: "自动模型" }];
   let streamRenderFrame = null;
+  let toolRenderFrame = null;
+  let toolRenderForceFull = false;
+  let saveStateTimer = null;
+  let workspaceWatchTimer = null;
+  let workspaceInsightTimer = null;
+  let fileContextMenu = null;
+  let sideToolFrames = new Map();
+  let fileTreeSignature = "";
   const sideStreamFrames = new Map();
   let pickerPopover = null;
   let providerDiscovery = null;
@@ -242,6 +250,11 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persistent));
   }
 
+  function saveStateSoon() {
+    clearTimeout(saveStateTimer);
+    saveStateTimer = setTimeout(() => saveState(), 320);
+  }
+
   function uid() {
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
   }
@@ -365,11 +378,24 @@
   function toolIcon(message) {
     const value = `${message.toolName || ""} ${message.kindName || message.kind || ""} ${message.title || ""}`.toLowerCase();
     if (/browser|web|url|fetch/.test(value)) return "i-browser";
+    if (/edit|write|patch|replace|search_replace/.test(value)) return "i-review";
     if (/read|file|glob|grep|search|list/.test(value)) return "i-file";
-    if (/edit|write|patch|replace/.test(value)) return "i-review";
     if (/task|agent|todo/.test(value)) return "i-tasks";
     if (/terminal|shell|bash|command|execute|run_/.test(value)) return "i-terminal";
     return "i-file";
+  }
+
+  function toolVerbTitle(message) {
+    const value = `${message.toolName || ""} ${message.kindName || ""} ${message.title || ""}`.toLowerCase();
+    if (/search_replace|edit|write|patch|replace/.test(value)) return "编辑文件";
+    if (/read_file|read\b/.test(value)) return "读取文件";
+    if (/glob|list_dir|list\b/.test(value)) return "浏览文件";
+    if (/grep|search/.test(value)) return "搜索代码";
+    if (/run_terminal|bash|shell|terminal|command|execute/.test(value)) return "运行命令";
+    if (/web_fetch|fetch|browser/.test(value)) return "访问网页";
+    if (/web_search/.test(value)) return "网络搜索";
+    if (/todo|task/.test(value)) return "更新任务";
+    return message.title || message.toolName || "工具调用";
   }
 
   function nestedToolValue(value, keys) {
@@ -382,8 +408,9 @@
   }
 
   function toolInputSummary(message) {
-    return nestedToolValue(message.input, ["command", "path", "file_path", "query", "url", "pattern", "description"])
+    const raw = nestedToolValue(message.input, ["command", "path", "file_path", "query", "url", "pattern", "description"])
       || message.description || message.toolName || message.kindName || "Runtime 工具";
+    return String(raw).replace(/\s+/g, " ").trim().slice(0, 160);
   }
 
   function prettyToolValue(value) {
@@ -392,57 +419,137 @@
     try { return JSON.stringify(value, null, 2); } catch { return String(value); }
   }
 
+  function truncateToolText(value, max = 4500) {
+    const text = prettyToolValue(value);
+    if (text.length <= max) return text;
+    return `${text.slice(0, max)}\n…（已截断，展开后可复制可见部分）`;
+  }
+
+  function toolNeedsAttention(message) {
+    const status = toolStatus(message.status, message.exitCode);
+    return status === "waiting_permission" || status === "failed";
+  }
+
+  function toolIsLive(message) {
+    return ["pending", "in_progress", "waiting_permission"].includes(toolStatus(message.status, message.exitCode));
+  }
+
+  function formatToolDuration(message) {
+    if (message.durationMs != null) return `${Math.max(0, Number(message.durationMs))} ms`;
+    if (message.finishedAt && message.startedAt) return `${Math.max(0, message.finishedAt - message.startedAt)} ms`;
+    return "";
+  }
+
   function thinkingMarkup(message, running = false, side = false) {
     if (!message.thought || nativeConfig.values.show_thinking_blocks === false) return "";
-    const active = Boolean(running);
+    const hasText = Boolean(String(message.text || "").trim());
+    const active = Boolean(running) && !hasText;
     return `<details class="thinking-block ${side ? "thinking-block--side" : ""} ${active ? "is-active" : ""}" ${active ? "open" : ""}>
       <summary><span class="thinking-block__signal">${active ? '<i></i><i></i><i></i>' : '<svg><use href="#i-check"/></svg>'}</span><b>${active ? "正在思考" : "思考过程"}</b><span class="thinking-block__chevron"><svg><use href="#i-chevron"/></svg></span></summary>
       <div class="thinking-block__content">${escapeHtml(message.thought)}</div>
     </details>`;
   }
 
-  function toolMessageMarkup(message, side = false) {
+  function toolPermissionActions(message) {
+    if (toolStatus(message.status, message.exitCode) !== "waiting_permission") return "";
+    const options = Array.isArray(message.permissionOptions) ? message.permissionOptions : [];
+    const allowOnce = options.find((item) => item.kind === "allow_once") || options.find((item) => /allow.?once|yes|允许一次/i.test(`${item.optionId} ${item.name}`));
+    const allowAlways = options.find((item) => item.kind === "allow_always") || options.find((item) => /allow.?always|始终|always/i.test(`${item.optionId} ${item.name}`));
+    const reject = options.find((item) => item.kind === "reject_once" || item.kind === "reject_always") || options.find((item) => /reject|deny|拒绝|否/i.test(`${item.optionId} ${item.name}`));
+    const buttons = [];
+    if (allowOnce) buttons.push(`<button type="button" class="tool-action tool-action--primary" data-tool-permission="option" data-option-id="${escapeHtml(allowOnce.optionId)}" data-tool-id="${escapeHtml(message.id)}" data-tool-call-id="${escapeHtml(message.toolCallId || "")}">允许一次</button>`);
+    else buttons.push(`<button type="button" class="tool-action tool-action--primary" data-tool-permission="allow" data-tool-id="${escapeHtml(message.id)}" data-tool-call-id="${escapeHtml(message.toolCallId || "")}">允许一次</button>`);
+    if (allowAlways) buttons.push(`<button type="button" class="tool-action" data-tool-permission="option" data-option-id="${escapeHtml(allowAlways.optionId)}" data-tool-id="${escapeHtml(message.id)}" data-tool-call-id="${escapeHtml(message.toolCallId || "")}" data-set-auto="1">始终允许</button>`);
+    buttons.push(`<button type="button" class="tool-action tool-action--danger" data-tool-permission="deny" data-option-id="${escapeHtml(reject?.optionId || "")}" data-tool-id="${escapeHtml(message.id)}" data-tool-call-id="${escapeHtml(message.toolCallId || "")}">拒绝</button>`);
+    return `<div class="tool-card__actions">
+      <p>Grok 需要你的确认后才能继续执行此工具。</p>
+      <div class="tool-card__action-row">${buttons.join("")}</div>
+    </div>`;
+  }
+
+  function toolMessageMarkup(message, side = false, forceOpen = false) {
     const status = toolStatus(message.status, message.exitCode);
-    const running = status === "pending" || status === "in_progress" || status === "waiting_permission";
-    const input = prettyToolValue(message.input);
-    const output = prettyToolValue(message.output || (message.exitCode != null ? `退出代码 ${message.exitCode}` : ""));
-    const duration = message.durationMs != null ? `${Math.max(0, Number(message.durationMs))} ms` : "";
+    const live = toolIsLive(message);
+    const open = forceOpen || toolNeedsAttention(message) || (live && status === "waiting_permission");
+    const input = truncateToolText(message.input, 3500);
+    const output = truncateToolText(message.output || (message.exitCode != null ? `退出代码 ${message.exitCode}` : ""), 4500);
+    const duration = formatToolDuration(message);
     const meta = [message.currentDir ? `目录  ${message.currentDir}` : "", message.exitCode != null ? `退出  ${message.exitCode}` : "", duration].filter(Boolean);
-    return `<details class="tool-card tool-card--${status} ${side ? "tool-card--side" : ""}" data-message-id="${escapeHtml(message.id)}" data-tool-call-id="${escapeHtml(message.toolCallId || "")}" ${running || status === "failed" ? "open" : ""}>
+    const locations = Array.isArray(message.locations) ? message.locations : [];
+    const locationLine = locations.slice(0, 3).map((item) => item?.path || item?.file || item).filter(Boolean).join(" · ");
+    return `<details class="tool-card tool-card--${status} ${side ? "tool-card--side" : ""}" data-message-id="${escapeHtml(message.id)}" data-tool-call-id="${escapeHtml(message.toolCallId || "")}" ${open ? "open" : ""}>
       <summary class="tool-card__head">
         <span class="tool-card__icon"><svg><use href="#${toolIcon(message)}"/></svg></span>
-        <span class="tool-card__copy"><b>${escapeHtml(message.title || message.toolName || "Runtime 工具")}</b><small>${escapeHtml(toolInputSummary(message))}</small></span>
-        <span class="tool-card__status"><i></i>${toolStatusLabel(message)}</span>
+        <span class="tool-card__copy"><b>${escapeHtml(toolVerbTitle(message))}</b><small>${escapeHtml(toolInputSummary(message))}</small></span>
+        <span class="tool-card__status"><i></i>${toolStatusLabel(message)}${duration && status === "completed" ? ` · ${escapeHtml(duration)}` : ""}</span>
         <span class="tool-card__chevron"><svg><use href="#i-chevron"/></svg></span>
       </summary>
       <div class="tool-card__body">
+        ${toolPermissionActions(message)}
         ${message.description ? `<p class="tool-card__description">${escapeHtml(message.description)}</p>` : ""}
+        ${locationLine ? `<p class="tool-card__description">涉及 ${escapeHtml(locationLine)}</p>` : ""}
         ${input ? `<section><header>输入</header><pre>${escapeHtml(input)}</pre></section>` : ""}
-        ${output ? `<section><header>输出</header><pre>${escapeHtml(output)}</pre></section>` : (running ? '<div class="tool-card__waiting"><i></i>正在等待 Runtime 返回结果…</div>' : "")}
+        ${output ? `<section><header>输出</header><pre>${escapeHtml(output)}</pre></section>` : (live ? '<div class="tool-card__waiting"><i></i>正在等待 Runtime 返回结果…</div>' : "")}
         ${meta.length ? `<footer>${meta.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</footer>` : ""}
       </div>
     </details>`;
   }
 
+  function toolGroupMarkup(tools, side = false) {
+    if (!tools.length) return "";
+    if (tools.length === 1) return toolMessageMarkup(tools[0], side);
+    const liveCount = tools.filter(toolIsLive).length;
+    const failedCount = tools.filter((tool) => toolStatus(tool.status, tool.exitCode) === "failed").length;
+    const waiting = tools.some((tool) => toolStatus(tool.status, tool.exitCode) === "waiting_permission");
+    const doneCount = tools.filter((tool) => toolStatus(tool.status, tool.exitCode) === "completed").length;
+    const open = waiting || liveCount > 0 || failedCount > 0;
+    const label = waiting ? "等待确认" : liveCount ? `执行中 ${doneCount}/${tools.length}` : failedCount ? `${failedCount} 步异常` : `已完成 ${tools.length} 步`;
+    return `<section class="tool-steps ${open ? "is-open" : ""} ${waiting ? "is-waiting" : ""} ${liveCount ? "is-live" : ""}" data-tool-group>
+      <button type="button" class="tool-steps__summary" data-tool-group-toggle>
+        <span class="tool-steps__signal">${liveCount || waiting ? "<i></i>" : '<svg><use href="#i-check"/></svg>'}</span>
+        <span class="tool-steps__copy"><b>执行步骤 · ${tools.length}</b><small>${escapeHtml(label)}</small></span>
+        <span class="tool-steps__chevron"><svg><use href="#i-chevron"/></svg></span>
+      </button>
+      <div class="tool-steps__body">${tools.map((tool) => toolMessageMarkup(tool, side, waiting && toolStatus(tool.status, tool.exitCode) === "waiting_permission")).join("")}</div>
+    </section>`;
+  }
+
   function messageMarkup(message) {
     if (message.kind === "tool") return toolMessageMarkup(message);
     const assistant = message.role === "assistant";
+    const continuation = Boolean(assistant && message.continuation);
     const identity = assistant ? '<span class="grok-mark" aria-hidden="true"></span>' : "YOU";
-    return `<article class="message message--${assistant ? "assistant" : "user"}" data-message-id="${message.id}">
-      <div class="message__meta"><span class="message__identity">${identity}</span><b>${assistant ? "Grok" : "你"}</b><span>${formatTime(message.createdAt)}</span></div>
+    const emptyBody = assistant && !String(message.text || "").trim() && activeAssistantMessage?.id === message.id;
+    return `<article class="message message--${assistant ? "assistant" : "user"} ${continuation ? "message--continuation" : ""}" data-message-id="${message.id}">
+      ${continuation ? "" : `<div class="message__meta"><span class="message__identity">${identity}</span><b>${assistant ? "Grok" : "你"}</b><span>${formatTime(message.createdAt)}</span></div>`}
       ${assistant ? `<div class="message__thinking-slot">${thinkingMarkup(message, activeAssistantMessage?.id === message.id)}</div>` : ""}
-      <div class="message__body">${assistant ? markdown(message.text) : escapeHtml(message.text)}</div>
-      ${assistant ? '<div class="message-actions"><button class="icon-button copy-message" title="复制"><svg><use href="#i-copy"/></svg></button></div>' : ""}
+      <div class="message__body ${emptyBody ? "is-streaming" : ""}">${assistant ? (emptyBody && !message.thought ? '<span class="stream-caret" aria-hidden="true"></span>' : markdown(message.text)) : escapeHtml(message.text)}</div>
+      ${assistant && !continuation ? '<div class="message-actions"><button class="icon-button copy-message" title="复制"><svg><use href="#i-copy"/></svg></button></div>' : ""}
     </article>`;
+  }
+
+  function conversationMarkup(messages) {
+    const chunks = [];
+    for (let index = 0; index < messages.length;) {
+      if (messages[index].kind === "tool") {
+        const tools = [];
+        while (index < messages.length && messages[index].kind === "tool") tools.push(messages[index++]);
+        chunks.push(toolGroupMarkup(tools));
+        continue;
+      }
+      chunks.push(messageMarkup(messages[index++]));
+    }
+    return chunks.join("");
   }
 
   function renderMessages() {
     const thread = activeThread();
     const target = $("#messages");
     if (!thread || !thread.messages.length) target.innerHTML = welcomeMarkup();
-    else target.innerHTML = thread.messages.map(messageMarkup).join("");
+    else target.innerHTML = conversationMarkup(thread.messages);
     bindDynamicActions();
     updateWindowTrail();
+    updateTurnProgress();
   }
 
   // Streaming chunks can arrive only a few characters apart. Rebuilding the whole
@@ -456,7 +563,8 @@
     streamRenderFrame = requestAnimationFrame(() => {
       streamRenderFrame = null;
       if (!activeAssistantMessage) return;
-      const article = $(`[data-message-id="${activeAssistantMessage.id}"]`);
+      let article = $(`[data-message-id="${activeAssistantMessage.id}"]`);
+      if (!article) { renderMessages(); article = $(`[data-message-id="${activeAssistantMessage.id}"]`); }
       const body = article?.querySelector(".message__body");
       if (!body) return;
       const thoughtSlot = article.querySelector(".message__thinking-slot");
@@ -465,11 +573,260 @@
         if (!block) { thoughtSlot.innerHTML = thinkingMarkup(activeAssistantMessage, true); block = thoughtSlot.querySelector(".thinking-block"); }
         const content = block?.querySelector(".thinking-block__content");
         if (content) content.textContent = activeAssistantMessage.thought;
+        if (String(activeAssistantMessage.text || "").trim()) {
+          block?.classList.remove("is-active");
+          if (block) block.open = false;
+          const label = block?.querySelector("summary b"); if (label) label.textContent = "思考过程";
+          const signal = block?.querySelector(".thinking-block__signal"); if (signal) signal.innerHTML = '<svg><use href="#i-check"/></svg>';
+        }
       }
-      body.innerHTML = markdown(activeAssistantMessage.text);
+      const text = activeAssistantMessage.text || "";
+      body.classList.toggle("is-streaming", !text.trim());
+      body.innerHTML = text.trim() ? markdown(text) : (activeAssistantMessage.thought ? "" : '<span class="stream-caret" aria-hidden="true"></span>');
       bindMessageBody(body);
       if (followOutput) conversation.scrollTop = conversation.scrollHeight;
     });
+  }
+
+  function findToolCard(toolCallId) {
+    if (!toolCallId) return null;
+    return [...document.querySelectorAll("details.tool-card[data-tool-call-id]")].find((el) => el.dataset.toolCallId === toolCallId) || null;
+  }
+
+  function bindToolPermissionButtons(root = document) {
+    $$("[data-tool-permission]", root).forEach((button) => button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handleToolPermission(
+        button.dataset.toolPermission,
+        button.dataset.toolId,
+        button.dataset.optionId || "",
+        button.dataset.toolCallId || "",
+        button.dataset.setAuto === "1"
+      );
+    }));
+  }
+
+  function trailingToolRun(messages = []) {
+    const tools = [];
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index].kind !== "tool") break;
+      tools.unshift(messages[index]);
+    }
+    return tools;
+  }
+
+  function patchToolCard(message) {
+    const card = findToolCard(message.toolCallId);
+    if (!card) return false;
+    const status = toolStatus(message.status, message.exitCode);
+    const side = card.classList.contains("tool-card--side");
+    card.className = `tool-card tool-card--${status}${side ? " tool-card--side" : ""}`;
+    const title = card.querySelector(".tool-card__copy b");
+    const summary = card.querySelector(".tool-card__copy small");
+    const statusEl = card.querySelector(".tool-card__status");
+    if (title) title.textContent = toolVerbTitle(message);
+    if (summary) summary.textContent = toolInputSummary(message);
+    if (statusEl) {
+      const duration = formatToolDuration(message);
+      statusEl.innerHTML = `<i></i>${toolStatusLabel(message)}${duration && status === "completed" ? ` · ${escapeHtml(duration)}` : ""}`;
+    }
+    if (toolNeedsAttention(message) || status === "waiting_permission") card.open = true;
+    if (card.open || status === "waiting_permission" || status === "completed" || status === "failed" || status === "cancelled") {
+      const temp = document.createElement("div");
+      temp.innerHTML = toolMessageMarkup(message, side, card.open);
+      const nextBody = temp.querySelector(".tool-card__body");
+      const body = card.querySelector(".tool-card__body");
+      if (body && nextBody) {
+        body.innerHTML = nextBody.innerHTML;
+        bindToolPermissionButtons(body);
+      }
+    }
+    return true;
+  }
+
+  function patchToolGroup(tools) {
+    const last = tools[tools.length - 1];
+    const card = last ? findToolCard(last.toolCallId) : null;
+    const group = card?.closest("[data-tool-group]") || $$("[data-tool-group]").at(-1);
+    if (!group) return;
+    const liveCount = tools.filter(toolIsLive).length;
+    const failedCount = tools.filter((tool) => toolStatus(tool.status, tool.exitCode) === "failed").length;
+    const waiting = tools.some((tool) => toolStatus(tool.status, tool.exitCode) === "waiting_permission");
+    const doneCount = tools.filter((tool) => toolStatus(tool.status, tool.exitCode) === "completed").length;
+    const label = waiting ? "等待确认" : liveCount ? `执行中 ${doneCount}/${tools.length}` : failedCount ? `${failedCount} 步异常` : `已完成 ${tools.length} 步`;
+    group.classList.toggle("is-waiting", waiting);
+    group.classList.toggle("is-live", liveCount > 0);
+    if (waiting || liveCount > 0 || failedCount > 0) group.classList.add("is-open");
+    const title = group.querySelector(".tool-steps__copy b");
+    const small = group.querySelector(".tool-steps__copy small");
+    const signal = group.querySelector(".tool-steps__signal");
+    if (title) title.textContent = `执行步骤 · ${tools.length}`;
+    if (small) small.textContent = label;
+    if (signal) signal.innerHTML = liveCount || waiting ? "<i></i>" : '<svg><use href="#i-check"/></svg>';
+  }
+
+  function scheduleToolRender({ forceFull = false } = {}) {
+    if (forceFull) toolRenderForceFull = true;
+    if (toolRenderFrame) return;
+    toolRenderFrame = requestAnimationFrame(() => {
+      toolRenderFrame = null;
+      const conversation = $("#conversation");
+      const followOutput = conversation.scrollHeight - conversation.scrollTop - conversation.clientHeight < 140;
+      const thread = activeThread();
+      const tools = trailingToolRun(thread?.messages || []);
+      let full = toolRenderForceFull;
+      toolRenderForceFull = false;
+      if (!full) {
+        for (const tool of tools) {
+          if (!findToolCard(tool.toolCallId)) { full = true; break; }
+        }
+        if (!full && tools.length > 1) {
+          const firstCard = findToolCard(tools[0].toolCallId);
+          if (!firstCard?.closest("[data-tool-group]")) full = true;
+        }
+        if (!full && tools.length === 1 && findToolCard(tools[0].toolCallId)?.closest("[data-tool-group]")) full = true;
+      }
+      if (full) {
+        const openIds = new Set([...document.querySelectorAll(".tool-card[open]")].map((el) => el.dataset.toolCallId).filter(Boolean));
+        const groupOpen = Boolean($$(".tool-steps.is-open").at(-1));
+        renderMessages();
+        for (const id of openIds) {
+          const card = findToolCard(id);
+          if (card) card.open = true;
+        }
+        if (groupOpen) $$(".tool-steps").at(-1)?.classList.add("is-open");
+        const newest = tools[tools.length - 1];
+        const entering = newest && findToolCard(newest.toolCallId);
+        if (entering) {
+          entering.classList.add("is-entering");
+          entering.addEventListener("animationend", () => entering.classList.remove("is-entering"), { once: true });
+        }
+      } else {
+        for (const tool of tools) patchToolCard(tool);
+        if (tools.length > 1) patchToolGroup(tools);
+        updateTurnProgress();
+      }
+      if (followOutput) conversation.scrollTop = conversation.scrollHeight;
+    });
+  }
+
+  function scheduleSideToolRender(tab) {
+    if (sideToolFrames.has(tab.id)) return;
+    sideToolFrames.set(tab.id, requestAnimationFrame(() => {
+      sideToolFrames.delete(tab.id);
+      renderSideTaskPane(tab);
+    }));
+  }
+
+  function workspaceAbsolute(relativePath) {
+    const base = String(state.cwd || "").replace(/[\\/]+$/, "");
+    const rel = String(relativePath || "").replace(/^[/\\]+/, "").replace(/\//g, pathSep());
+    return `${base}${pathSep()}${rel}`;
+  }
+
+  function pathSep() {
+    return String(state.cwd || "").includes("\\") ? "\\" : "/";
+  }
+
+  function scheduleWorkspaceInsight() {
+    clearTimeout(workspaceInsightTimer);
+    workspaceInsightTimer = setTimeout(() => {
+      void refreshGitInfo({ quiet: true });
+      void softRefreshWorkspaceFiles();
+    }, 700);
+  }
+
+  function startWorkspaceWatch() {
+    stopWorkspaceWatch();
+    workspaceWatchTimer = setInterval(() => {
+      if (document.hidden) return;
+      void refreshGitInfo({ quiet: true });
+      if (state.inspectorOpen && activeDockType() === "files") void softRefreshWorkspaceFiles();
+    }, 2500);
+  }
+
+  function stopWorkspaceWatch() {
+    if (workspaceWatchTimer) clearInterval(workspaceWatchTimer);
+    workspaceWatchTimer = null;
+  }
+
+  async function softRefreshWorkspaceFiles() {
+    if (!state.inspectorOpen || activeDockType() !== "files") return;
+    for (const key of [...fileTreeCache.keys()]) {
+      if (!String(key).endsWith("::open")) fileTreeCache.delete(key);
+    }
+    const tree = $("#fileTree");
+    const scrollTop = tree?.scrollTop || 0;
+    await loadFileTreeDir("");
+    if (tree) tree.scrollTop = scrollTop;
+  }
+
+  function closeFileContextMenu() {
+    if (fileContextMenu) {
+      fileContextMenu.remove();
+      fileContextMenu = null;
+    }
+    $$(".file-tree-item.is-context").forEach((item) => item.classList.remove("is-context"));
+  }
+
+  function openFileContextMenu(event, entry) {
+    event.preventDefault();
+    event.stopPropagation();
+    closeFileContextMenu();
+    const trigger = event.currentTarget;
+    trigger.classList.add("is-context");
+    const menu = document.createElement("div");
+    menu.className = "file-context-menu";
+    const abs = workspaceAbsolute(entry.path);
+    const actions = entry.type === "dir"
+      ? [
+          { id: "reveal", label: "在资源管理器中显示", icon: "i-folder" },
+          { id: "open-app", label: "用系统打开", icon: "i-external" },
+          { sep: true },
+          { id: "copy-path", label: "复制路径", icon: "i-copy" },
+          { id: "copy-rel", label: "复制相对路径", icon: "i-copy" },
+          { id: "copy-name", label: "复制名称", icon: "i-copy" }
+        ]
+      : [
+          { id: "open", label: "打开预览", icon: "i-file" },
+          { id: "open-app", label: "用系统打开", icon: "i-external" },
+          { id: "reveal", label: "在资源管理器中显示", icon: "i-folder" },
+          { sep: true },
+          { id: "copy-path", label: "复制路径", icon: "i-copy" },
+          { id: "copy-rel", label: "复制相对路径", icon: "i-copy" },
+          { id: "copy-name", label: "复制文件名", icon: "i-copy" }
+        ];
+    menu.innerHTML = actions.map((item) => item.sep
+      ? "<hr/>"
+      : `<button type="button" data-file-action="${item.id}"><svg><use href="#${item.icon}"/></svg><span>${escapeHtml(item.label)}</span></button>`).join("");
+    document.body.appendChild(menu);
+    fileContextMenu = menu;
+    const rect = menu.getBoundingClientRect();
+    const left = Math.max(8, Math.min(event.clientX, innerWidth - rect.width - 8));
+    const top = Math.max(8, Math.min(event.clientY, innerHeight - rect.height - 8));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    menu.querySelectorAll("[data-file-action]").forEach((button) => button.addEventListener("click", async (clickEvent) => {
+      clickEvent.stopPropagation();
+      const action = button.dataset.fileAction;
+      closeFileContextMenu();
+      if (action === "open") await openWorkspaceFile(entry.path);
+      else if (action === "reveal" && api) api.revealPath(abs);
+      else if (action === "open-app" && api) {
+        const result = await api.openPath(abs);
+        if (!result?.ok) toast("无法打开", result?.error || abs);
+      } else if (action === "copy-path") {
+        await navigator.clipboard.writeText(abs);
+        toast("已复制路径", abs);
+      } else if (action === "copy-rel") {
+        await navigator.clipboard.writeText(entry.path);
+        toast("已复制相对路径", entry.path);
+      } else if (action === "copy-name") {
+        await navigator.clipboard.writeText(entry.name);
+        toast("已复制名称", entry.name);
+      }
+    }));
   }
 
   function renderThreads() {
@@ -535,11 +892,21 @@
     $$('[data-git-branch]', list).forEach((button) => button.addEventListener("click", () => switchBranch(button.dataset.gitBranch, button)));
   }
 
-  async function refreshGitInfo() {
-    $("#branchName").textContent = "检查分支…";
-    gitState = api ? await api.gitInfo(state.cwd) : { ok: true, isRepo: true, root: state.cwd, current: "main", dirtyCount: 0, stagedCount: 0, branches: [{ name: "main", current: true, updated: "刚刚" }, { name: "feature/ui", current: false, updated: "2 小时前" }] };
-    if (!gitState.ok) gitState = { ok: true, isRepo: false, branches: [], dirtyCount: 0, error: gitState.error };
-    updateBranchPill(); renderBranchPopover();
+  async function refreshGitInfo({ quiet = false } = {}) {
+    if (!quiet) $("#branchName").textContent = "检查分支…";
+    const next = api ? await api.gitInfo(state.cwd) : { ok: true, isRepo: true, root: state.cwd, current: "main", dirtyCount: 0, stagedCount: 0, branches: [{ name: "main", current: true, updated: "刚刚" }, { name: "feature/ui", current: false, updated: "2 小时前" }] };
+    const info = next?.ok === false ? { ok: true, isRepo: false, branches: [], dirtyCount: 0, error: next.error } : next;
+    const changed = gitState.current !== info.current
+      || gitState.isRepo !== info.isRepo
+      || gitState.dirtyCount !== info.dirtyCount
+      || gitState.stagedCount !== info.stagedCount
+      || gitState.ahead !== info.ahead
+      || gitState.behind !== info.behind
+      || (gitState.branches || []).length !== (info.branches || []).length;
+    gitState = info;
+    if (!quiet || changed) updateBranchPill();
+    if (!$("#branchPopover").hidden) renderBranchPopover();
+    else if (!quiet) renderBranchPopover();
   }
 
   async function switchBranch(branch, button) {
@@ -706,8 +1073,9 @@
   function sideTaskMessageMarkup(message, tab = null) {
     if (message.kind === "tool") return toolMessageMarkup(message, true);
     const assistant = message.role === "assistant";
-    return `<article class="side-message side-message--${assistant ? "assistant" : "user"}" data-side-message-id="${message.id}">
-      <header>${assistant ? '<span class="grok-mark" aria-hidden="true"></span><b>Grok</b>' : "<b>你</b>"}<time>${formatTime(message.createdAt)}</time></header>
+    const continuation = Boolean(assistant && message.continuation);
+    return `<article class="side-message side-message--${assistant ? "assistant" : "user"} ${continuation ? "side-message--continuation" : ""}" data-side-message-id="${message.id}">
+      ${continuation ? "" : `<header>${assistant ? '<span class="grok-mark" aria-hidden="true"></span><b>Grok</b>' : "<b>你</b>"}<time>${formatTime(message.createdAt)}</time></header>`}
       ${assistant ? thinkingMarkup(message, Boolean(tab?.runId && message.id === tab.activeAssistantId), true) : ""}
       <div class="side-message__body">${assistant ? markdown(message.text || "") : escapeHtml(message.text || "")}</div>
     </article>`;
@@ -746,8 +1114,7 @@
       const active = tab.messages.find((message) => message.id === tab.activeAssistantId);
       if (active && !active.text && !active.thought) tab.messages.splice(tab.messages.indexOf(active), 1);
       tool = createToolMessage(event); tab.messages.push(tool);
-      const assistant = { id: uid(), role: "assistant", text: "", thought: "", createdAt: Date.now() };
-      tab.messages.push(assistant); tab.activeAssistantId = assistant.id;
+      tab.activeAssistantId = null;
     }
     mergeToolMessage(tool, event);
     return tool;
@@ -756,10 +1123,18 @@
   function lifecycleTool(tab, lifecycle) {
     if (!["permission_requested", "permission_resolved", "tool_started", "tool_completed"].includes(lifecycle.type)) return null;
     const tools = [...(tab.messages || [])].reverse().filter((message) => message.kind === "tool");
-    const tool = tools.find((message) => !lifecycle.tool_name || message.toolName === lifecycle.tool_name) || tools[0];
+    const byId = lifecycle.tool_call_id || lifecycle.toolCallId;
+    const tool = (byId && tools.find((message) => message.toolCallId === byId))
+      || tools.find((message) => toolStatus(message.status) === "waiting_permission")
+      || tools.find((message) => lifecycle.tool_name && message.toolName === lifecycle.tool_name)
+      || tools.find((message) => toolIsLive(message))
+      || tools[0];
     if (!tool) return null;
     if (lifecycle.type === "permission_requested") tool.status = "waiting_permission";
-    if (lifecycle.type === "permission_resolved") tool.status = lifecycle.decision === "allow" ? "in_progress" : "failed";
+    if (lifecycle.type === "permission_resolved") {
+      tool.status = lifecycle.decision === "allow" ? "in_progress" : "failed";
+      if (lifecycle.decision !== "allow") tool.status = "failed";
+    }
     if (lifecycle.type === "tool_started") tool.status = "in_progress";
     if (lifecycle.type === "tool_completed") {
       tool.status = lifecycle.outcome === "success" ? "completed" : "failed";
@@ -773,9 +1148,22 @@
     pane ||= [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
     if (!pane) return;
     const target = $("[data-side-messages]", pane);
-    target.innerHTML = tab.messages?.length
-      ? tab.messages.map((message) => sideTaskMessageMarkup(message, tab)).join("")
-      : `<div class="side-task-empty"><span class="grok-mark" aria-hidden="true"></span><h3>并行处理一个新任务</h3><p>在这里开启独立会话，与主对话并行推进。</p></div>`;
+    if (!tab.messages?.length) {
+      target.innerHTML = `<div class="side-task-empty"><span class="grok-mark" aria-hidden="true"></span><h3>并行处理一个新任务</h3><p>在这里开启独立会话，与主对话并行推进。</p></div>`;
+    } else {
+      const chunks = [];
+      for (let index = 0; index < tab.messages.length;) {
+        if (tab.messages[index].kind === "tool") {
+          const tools = [];
+          while (index < tab.messages.length && tab.messages[index].kind === "tool") tools.push(tab.messages[index++]);
+          chunks.push(toolGroupMarkup(tools, true));
+          continue;
+        }
+        chunks.push(sideTaskMessageMarkup(tab.messages[index++], tab));
+      }
+      target.innerHTML = chunks.join("");
+      $$("[data-tool-group-toggle]", target).forEach((button) => button.addEventListener("click", () => button.closest("[data-tool-group]")?.classList.toggle("is-open")));
+    }
     const button = $("[data-side-send]", pane);
     button.classList.toggle("is-stop", Boolean(tab.runId));
     button.innerHTML = `<svg><use href="#${tab.runId ? "i-stop" : "i-send"}"/></svg>`;
@@ -836,12 +1224,19 @@
 
   function handleSideTaskEvent(tab, event) {
     if (event.runId && !tab.runId) tab.runId = event.runId;
-    let assistant = tab.messages?.find((message) => message.id === tab.activeAssistantId) || [...(tab.messages || [])].reverse().find((message) => message.role === "assistant");
+    let assistant = tab.messages?.find((message) => message.id === tab.activeAssistantId) || [...(tab.messages || [])].reverse().find((message) => message.role === "assistant" && message.id === tab.activeAssistantId);
     if (event.type === "session_bound") tab.sessionId = event.sessionId || tab.sessionId;
-    else if (event.type === "tool_call" || event.type === "tool_update") { sideToolEvent(tab, event); assistant = tab.messages.find((message) => message.id === tab.activeAssistantId); }
+    else if (event.type === "tool_call" || event.type === "tool_update") { sideToolEvent(tab, event); }
     else if (event.type === "lifecycle") { if (!lifecycleTool(tab, event.event || {})) return; }
-    else if (event.type === "text" && assistant) { assistant.text += event.data || ""; scheduleSideStreamingRender(tab); return; }
-    else if (event.type === "thought" && assistant) { assistant.thought = (assistant.thought || "") + (event.data || ""); scheduleSideStreamingRender(tab); return; }
+    else if ((event.type === "text" || event.type === "thought")) {
+      if (!tab.activeAssistantId || !tab.messages?.some((message) => message.id === tab.activeAssistantId)) {
+        const continuation = Boolean(tab.messages?.some((message) => message.kind === "tool" || message.role === "assistant"));
+        assistant = { id: uid(), role: "assistant", text: "", thought: "", continuation, createdAt: Date.now() };
+        tab.messages.push(assistant); tab.activeAssistantId = assistant.id;
+      } else assistant = tab.messages.find((message) => message.id === tab.activeAssistantId);
+      if (event.type === "text") { assistant.text += event.data || ""; scheduleSideStreamingRender(tab); return; }
+      assistant.thought = (assistant.thought || "") + (event.data || ""); scheduleSideStreamingRender(tab); return;
+    }
     else if (event.type === "error" && assistant) assistant.text += `\n\n**错误：** ${event.message}`;
     else if (event.type === "end") { tab.sessionId = event.sessionId || tab.sessionId; finishSideTask(tab, event.stopReason || "完成"); return; }
     else if (event.type === "process_exit" && event.code !== 0) { finishSideTask(tab, `进程退出 ${event.code ?? event.signal}`); return; }
@@ -1044,29 +1439,34 @@
     target.innerHTML = visible.length
       ? visible.map((entry) => fileTreeItemMarkup(entry, depth)).join("")
       : '<div class="file-tree-empty">没有匹配的文件</div>';
-    $$("[data-file-path]", target).forEach((button) => button.addEventListener("click", async (event) => {
-      event.stopPropagation();
+    $$("[data-file-path]", target).forEach((button) => {
       const pathValue = button.dataset.filePath;
       const type = button.dataset.fileType;
-      if (type === "dir") {
-        const openKey = `${pathValue}::open`;
-        const childHost = button.nextElementSibling;
-        if (fileTreeCache.has(openKey)) {
-          fileTreeCache.delete(openKey);
-          button.classList.remove("is-expanded");
-          if (childHost?.classList.contains("file-tree-children")) { childHost.classList.remove("is-open"); childHost.innerHTML = ""; }
+      const entry = visible.find((item) => item.path === pathValue) || { path: pathValue, type, name: basename(pathValue) };
+      button.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        closeFileContextMenu();
+        if (type === "dir") {
+          const openKey = `${pathValue}::open`;
+          const childHost = button.nextElementSibling;
+          if (fileTreeCache.has(openKey)) {
+            fileTreeCache.delete(openKey);
+            button.classList.remove("is-expanded");
+            if (childHost?.classList.contains("file-tree-children")) { childHost.classList.remove("is-open"); childHost.innerHTML = ""; }
+            return;
+          }
+          fileTreeCache.set(openKey, true);
+          button.classList.add("is-expanded");
+          if (childHost?.classList.contains("file-tree-children")) {
+            childHost.classList.add("is-open");
+            await loadFileTreeDir(pathValue, childHost, depth + 1);
+          }
           return;
         }
-        fileTreeCache.set(openKey, true);
-        button.classList.add("is-expanded");
-        if (childHost?.classList.contains("file-tree-children")) {
-          childHost.classList.add("is-open");
-          await loadFileTreeDir(pathValue, childHost, depth + 1);
-        }
-        return;
-      }
-      await openWorkspaceFile(pathValue);
-    }));
+        await openWorkspaceFile(pathValue);
+      });
+      button.addEventListener("contextmenu", (event) => openFileContextMenu(event, entry));
+    });
     for (const entry of visible.filter((item) => item.type === "dir" && fileTreeCache.has(`${item.path}::open`))) {
       const childHost = target.querySelector(`[data-file-children="${entry.path.replace(/"/g, '\\"')}"]`);
       if (childHost) await loadFileTreeDir(entry.path, childHost, depth + 1);
@@ -1169,9 +1569,45 @@
   }
 
   function updateSwitches() {
-    [$("#approvalSwitch"), $("#settingsApproval")].forEach((el) => el?.setAttribute("aria-checked", String(state.alwaysApprove)));
-    $("#permissionLabel").textContent = state.alwaysApprove ? "自动批准" : "每次询问";
+    $("#settingsApproval")?.setAttribute("aria-checked", String(state.alwaysApprove));
+    const modeButton = $("#agentModeButton");
+    const modeLabel = $("#agentModeLabel");
+    if (modeLabel) modeLabel.textContent = state.alwaysApprove ? "完全访问" : "需要审批";
+    modeButton?.classList.toggle("is-auto", Boolean(state.alwaysApprove));
+    modeButton?.setAttribute("aria-expanded", "false");
     $("#themeSelect").value = state.theme;
+  }
+
+  function openAgentModePicker(anchor) {
+    openPicker(anchor, {
+      align: "right",
+      selected: state.alwaysApprove ? "auto" : "agent",
+      items: [
+        { id: "agent", label: "需要审批" },
+        { id: "auto", label: "完全访问" }
+      ],
+      onSelect: async (item) => {
+        const next = item.id === "auto";
+        if (next === state.alwaysApprove) return;
+        state.alwaysApprove = next;
+        saveState();
+        updateSwitches();
+        if (api) {
+          const result = await api.setNativeSetting("permission_mode", next ? "always-approve" : "ask");
+          if (!result.ok) {
+            state.alwaysApprove = !next;
+            saveState();
+            updateSwitches();
+            toast("模式保存失败", result.error);
+            return;
+          }
+          nativeConfig.values.permission_mode = result.value;
+          nativeConfig.raw = result.raw;
+          if ($("#rawConfigEditor")) $("#rawConfigEditor").value = result.raw || "";
+        }
+        toast(next ? "完全访问" : "需要审批", "");
+      }
+    });
   }
 
   function bindDynamicActions() {
@@ -1181,7 +1617,75 @@
       const message = activeThread()?.messages.find((item) => item.id === id);
       if (message) { await navigator.clipboard.writeText(message.text); toast("已复制", "回复已复制到剪贴板"); }
     }));
+    $$("[data-tool-group-toggle]").forEach((button) => button.addEventListener("click", () => {
+      button.closest("[data-tool-group]")?.classList.toggle("is-open");
+    }));
+    $$("[data-tool-permission]").forEach((button) => button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handleToolPermission(
+        button.dataset.toolPermission,
+        button.dataset.toolId,
+        button.dataset.optionId || "",
+        button.dataset.toolCallId || "",
+        button.dataset.setAuto === "1"
+      );
+    }));
     $$(".message__body").forEach(bindMessageBody);
+  }
+
+  async function handleToolPermission(action, toolId, optionId = "", toolCallId = "", setAuto = false) {
+    const thread = activeThread();
+    const tool = thread?.messages.find((message) => message.id === toolId && message.kind === "tool");
+    const callId = toolCallId || tool?.toolCallId;
+    if (action === "deny") {
+      if (api && activeRun && callId) {
+        if (optionId) await api.respondPermission({ runId: activeRun, toolCallId: callId, optionId });
+        else await api.respondPermission({ runId: activeRun, toolCallId: callId, cancelled: true });
+      }
+      if (tool) { tool.status = "failed"; tool.output = tool.output || "用户拒绝了此工具调用"; }
+      saveState();
+      scheduleToolRender();
+      toast("已拒绝", "已拒绝该工具调用");
+      return;
+    }
+    if (setAuto && !state.alwaysApprove) {
+      state.alwaysApprove = true;
+      saveState();
+      updateSwitches();
+      if (api) {
+        const result = await api.setNativeSetting("permission_mode", "always-approve");
+        if (result.ok) {
+          nativeConfig.values.permission_mode = result.value;
+          nativeConfig.raw = result.raw;
+        }
+      }
+    }
+    if (api && activeRun && callId) {
+      const resolvedOption = optionId || action;
+      const result = await api.respondPermission({ runId: activeRun, toolCallId: callId, optionId: resolvedOption === "allow" ? "allow-once" : resolvedOption });
+      if (!result.ok) {
+        toast("无法提交确认", result.error || "权限通道暂时不可用");
+        return;
+      }
+    }
+    if (tool) tool.status = "in_progress";
+    saveState();
+    scheduleToolRender();
+    setSessionStateText("正在执行工具");
+  }
+
+  function updateTurnProgress() {
+    if (!activeRun) return;
+    const thread = activeThread();
+    if (!thread) return;
+    const tools = thread.messages.filter((message) => message.kind === "tool");
+    if (!tools.length) return;
+    const waiting = tools.some((tool) => toolStatus(tool.status, tool.exitCode) === "waiting_permission");
+    const live = tools.filter(toolIsLive).length;
+    const done = tools.filter((tool) => toolStatus(tool.status, tool.exitCode) === "completed").length;
+    if (waiting) setSessionStateText("等待工具确认");
+    else if (live) setSessionStateText(`执行步骤 ${done}/${tools.length}`);
   }
 
   function bindMessageBody(body) {
@@ -1191,6 +1695,7 @@
 
   function setRunning(running) {
     const button = $("#sendButton");
+    document.documentElement.classList.toggle("is-running", running);
     $("#sessionState").classList.toggle("is-running", running);
     setSessionStateText(running ? "Grok 正在工作" : "准备就绪");
     button.classList.toggle("is-stop", running);
@@ -1218,43 +1723,58 @@
     })[phase] || "Grok 正在工作";
   }
 
+  function ensureActiveAssistant(continuation = false) {
+    const thread = activeThread();
+    if (!thread) return null;
+    if (activeAssistantMessage && thread.messages.some((message) => message.id === activeAssistantMessage.id)) return activeAssistantMessage;
+    activeAssistantMessage = {
+      id: uid(),
+      role: "assistant",
+      text: "",
+      thought: "",
+      continuation: Boolean(continuation || thread.messages.some((message) => message.kind === "tool" || message.role === "assistant")),
+      createdAt: Date.now()
+    };
+    thread.messages.push(activeAssistantMessage);
+    return activeAssistantMessage;
+  }
+
   function mainToolEvent(event) {
     const thread = activeThread();
     if (!thread) return null;
     let tool = thread.messages.find((message) => message.kind === "tool" && message.toolCallId === event.toolCallId);
+    let created = false;
     if (!tool) {
       if (activeAssistantMessage && !activeAssistantMessage.text && !activeAssistantMessage.thought) {
         const index = thread.messages.indexOf(activeAssistantMessage); if (index >= 0) thread.messages.splice(index, 1);
       }
-      tool = createToolMessage(event); thread.messages.push(tool);
-      activeAssistantMessage = { id: uid(), role: "assistant", text: "", thought: "", createdAt: Date.now() };
-      thread.messages.push(activeAssistantMessage);
-      renderMessages(); scrollToBottom();
-    } else {
-      mergeToolMessage(tool, event);
-      refreshToolMessage(tool);
+      tool = createToolMessage(event);
+      thread.messages.push(tool);
+      activeAssistantMessage = null;
+      created = true;
     }
     mergeToolMessage(tool, event);
-    saveState();
+    saveStateSoon();
+    scheduleToolRender({ forceFull: created });
+    updateTurnProgress();
+    const status = toolStatus(tool.status, tool.exitCode);
+    if (status === "completed" || status === "failed" || status === "cancelled") scheduleWorkspaceInsight();
     return tool;
   }
 
-  function refreshToolMessage(message) {
-    const existing = $(`[data-message-id="${message.id}"]`);
-    if (!existing) { renderMessages(); return; }
-    const wasOpen = existing.open;
-    const template = document.createElement("template"); template.innerHTML = toolMessageMarkup(message).trim();
-    const replacement = template.content.firstElementChild;
-    replacement.open = wasOpen || ["pending", "in_progress", "waiting_permission", "failed"].includes(toolStatus(message.status, message.exitCode));
-    existing.replaceWith(replacement);
+  function refreshToolMessage() {
+    scheduleToolRender();
   }
 
   function handleMainLifecycle(lifecycle) {
     if (!lifecycle) return;
-    if (lifecycle.type === "phase_changed") setSessionStateText(phaseLabel(lifecycle.phase));
+    if (lifecycle.type === "phase_changed") {
+      setSessionStateText(phaseLabel(lifecycle.phase));
+      updateTurnProgress();
+    }
     const thread = activeThread(); if (!thread) return;
     const tool = lifecycleTool({ messages: thread.messages }, lifecycle);
-    if (tool) { refreshToolMessage(tool); saveState(); }
+    if (tool) { scheduleToolRender(); saveStateSoon(); updateTurnProgress(); }
   }
 
   function addTimeline(title, detail, status = "done") {
@@ -1310,15 +1830,42 @@
     if (!activeRun && event.clientId === "main" && activeAssistantMessage) activeRun = event.runId;
     if (!activeRun || event.runId !== activeRun) return;
     if (event.type === "text") {
+      ensureActiveAssistant(true);
       activeAssistantMessage.text += event.data || "";
       scheduleStreamingRender();
     } else if (event.type === "thought") {
+      ensureActiveAssistant(true);
       activeAssistantMessage.thought = (activeAssistantMessage.thought || "") + (event.data || "");
       scheduleStreamingRender();
     } else if (event.type === "session_bound") {
       const thread = activeThread(); if (thread) thread.sessionId = event.sessionId || thread.sessionId;
     } else if (event.type === "tool_call" || event.type === "tool_update") {
       mainToolEvent(event);
+    } else if (event.type === "permission_prompt") {
+      const thread = activeThread();
+      if (!thread) return;
+      let tool = thread.messages.find((message) => message.kind === "tool" && message.toolCallId === event.toolCallId);
+      if (!tool) {
+        if (activeAssistantMessage && !activeAssistantMessage.text && !activeAssistantMessage.thought) {
+          const index = thread.messages.indexOf(activeAssistantMessage);
+          if (index >= 0) thread.messages.splice(index, 1);
+        }
+        tool = createToolMessage({
+          toolCallId: event.toolCallId,
+          title: event.title,
+          toolName: event.title,
+          status: "waiting_permission",
+          timestamp: Date.now()
+        });
+        thread.messages.push(tool);
+        activeAssistantMessage = null;
+      }
+      tool.status = "waiting_permission";
+      tool.permissionOptions = Array.isArray(event.options) ? event.options : [];
+      if (event.title) tool.title = event.title;
+      saveStateSoon();
+      scheduleToolRender({ forceFull: true });
+      setSessionStateText("等待工具确认");
     } else if (event.type === "lifecycle") {
       handleMainLifecycle(event.event);
     } else if (event.type === "diagnostic") {
@@ -1326,14 +1873,17 @@
       activeRunDiagnostics = activeRunDiagnostics.slice(-8);
       addTimeline("Runtime 活动", String(event.data).slice(0, 55), "done");
     } else if (event.type === "error") {
+      ensureActiveAssistant(true);
       activeAssistantMessage.text += `\n\n**错误：** ${event.message}`;
       toast("Grok 返回错误", event.message);
+      renderMessages();
     } else if (event.type === "end") {
       const thread = activeThread();
       thread.sessionId = event.sessionId || thread.sessionId;
       finishRun(event.stopReason || "完成");
     } else if (event.type === "process_exit" && event.code !== 0) {
-      if (activeAssistantMessage) {
+      if (activeAssistantMessage || activeThread()) {
+        ensureActiveAssistant(true);
         const detail = activeRunDiagnostics.slice(-3).join("\n").trim();
         activeAssistantMessage.text += `\n\n**Runtime 退出（${event.code ?? event.signal}）**${detail ? `\n\n\`\`\`text\n${detail}\n\`\`\`` : ""}`;
       }
@@ -1354,6 +1904,7 @@
     if (thread) thread.updatedAt = Date.now();
     activeRun = null; activeAssistantMessage = null; activeRunDiagnostics = [];
     setRunning(false); saveState(); renderThreads(); renderMessages();
+    scheduleWorkspaceInsight();
     addTimeline("任务结束", reason, "done");
   }
 
@@ -1897,10 +2448,10 @@
     if (!slashPopover) return;
     const composer = $("#composer");
     const rect = composer.getBoundingClientRect();
-    const popRect = slashPopover.getBoundingClientRect();
-    const left = Math.max(10, Math.min(rect.left, innerWidth - popRect.width - 10));
-    const top = Math.max(10, rect.top - popRect.height - 8);
-    slashPopover.style.left = `${left}px`;
+    slashPopover.style.width = `${Math.max(280, Math.round(rect.width))}px`;
+    slashPopover.style.left = `${Math.round(rect.left)}px`;
+    const popHeight = slashPopover.offsetHeight || 240;
+    const top = Math.max(10, rect.top - popHeight - 8);
     slashPopover.style.top = `${top}px`;
   }
 
@@ -2005,24 +2556,30 @@
     toast("斜杠命令", `${command.label} 已填入输入框，可继续补充参数后发送`);
   }
 
-  function openPicker(anchor, { items, selected, onSelect }) {
+  function openPicker(anchor, { items, selected, onSelect, align = "left", scrollable = false }) {
     closePicker();
     anchor.classList.add("is-picker-open");
     const popover = document.createElement("section");
-    popover.className = "picker-popover";
+    popover.className = scrollable ? "picker-popover picker-popover--menu" : "picker-popover";
     popover.setAttribute("role", "listbox");
-    popover.innerHTML = `<div class="picker-popover__items">${items.map((item) => `<button class="picker-option ${item.id === selected ? "is-selected" : ""}" role="option" aria-selected="${item.id === selected}" data-picker-id="${escapeHtml(item.id)}"><span class="picker-option__radio"><i></i></span><span class="picker-option__copy"><b>${escapeHtml(item.label)}</b><small>${escapeHtml(item.description || "")}</small></span>${item.badge ? `<em>${escapeHtml(item.badge)}</em>` : ""}</button>`).join("")}</div>`;
+    popover.innerHTML = `<div class="picker-popover__items">${items.map((item) => {
+      const desc = item.description ? `<small>${escapeHtml(item.description)}</small>` : "";
+      const badge = item.badge ? `<em>${escapeHtml(item.badge)}</em>` : "";
+      return `<button class="picker-option ${item.description ? "" : "picker-option--plain"} ${item.id === selected ? "is-selected" : ""}" role="option" aria-selected="${item.id === selected}" data-picker-id="${escapeHtml(item.id)}"><span class="picker-option__radio"><i></i></span><span class="picker-option__copy"><b>${escapeHtml(item.label)}</b>${desc}</span>${badge}</button>`;
+    }).join("")}</div>`;
     document.body.appendChild(popover);
     pickerPopover = popover;
     const anchorRect = anchor.getBoundingClientRect();
     const popoverRect = popover.getBoundingClientRect();
-    const left = Math.max(10, Math.min(anchorRect.left, innerWidth - popoverRect.width - 10));
+    const preferredLeft = align === "right" ? anchorRect.right - popoverRect.width : anchorRect.left;
+    const left = Math.max(10, Math.min(preferredLeft, innerWidth - popoverRect.width - 10));
     const top = Math.max(10, anchorRect.top - popoverRect.height - 9);
     popover.style.left = `${left}px`;
     popover.style.top = `${top}px`;
-    const itemScroller = popover.querySelector(".picker-popover__items");
-    itemScroller.addEventListener("wheel", (event) => event.stopPropagation(), { passive: true });
-    requestAnimationFrame(() => popover.querySelector(".picker-option.is-selected")?.scrollIntoView({ block: "nearest" }));
+    if (scrollable) {
+      popover.querySelector(".picker-popover__items").addEventListener("wheel", (event) => event.stopPropagation(), { passive: true });
+      requestAnimationFrame(() => popover.querySelector(".picker-option.is-selected")?.scrollIntoView({ block: "nearest" }));
+    }
     popover.querySelectorAll("[data-picker-id]").forEach((button) => button.addEventListener("click", (event) => {
       event.stopPropagation();
       const item = items.find((candidate) => candidate.id === button.dataset.pickerId);
@@ -2138,7 +2695,11 @@
       fileFilter = event.target.value;
       await loadFileTreeDir("");
     });
-    $("#approvalSwitch").addEventListener("click", toggleApproval);
+    $("#agentModeButton").addEventListener("click", (event) => {
+      event.stopPropagation();
+      openAgentModePicker(event.currentTarget);
+    });
+    $("#settingsApproval")?.addEventListener("click", toggleApproval);
     $("#settingsButton").addEventListener("click", () => openSettings("general")); $$('[data-close-modal]').forEach((button) => button.addEventListener("click", closeSettings));
     $("#settingsBackdrop").addEventListener("click", (event) => { if (event.target === $("#settingsBackdrop")) closeSettings(); });
     $("#paletteBackdrop").addEventListener("click", (event) => { if (event.target === $("#paletteBackdrop")) closePalette(); });
@@ -2174,6 +2735,7 @@
     $("#modelButton").addEventListener("click", (event) => {
       event.stopPropagation();
       openPicker(event.currentTarget, {
+        scrollable: true,
         selected: state.model,
         items: runtimeModels.map((item, index) => ({ ...item, description: item.id === "auto" ? "跟随 Grok Runtime 的默认模型" : "固定使用这个模型处理后续任务", badge: index === 0 ? "推荐" : "" })),
         onSelect: (item) => { state.model = item.id; state.modelLabel = item.label; saveState(); updateWorkspace(); toast("模型已切换", item.label); }
@@ -2184,9 +2746,9 @@
       openPicker(event.currentTarget, {
         selected: state.effort,
         items: [
-          { id: "low", label: "低思考", description: "快速回答，适合简单修改与查询" },
-          { id: "medium", label: "中思考", description: "速度与分析深度之间的平衡", badge: "均衡" },
-          { id: "high", label: "高思考", description: "更深入地规划、实现并验证复杂任务" }
+          { id: "low", label: "低思考" },
+          { id: "medium", label: "中思考" },
+          { id: "high", label: "高思考" }
         ],
         onSelect: (item) => { state.effort = item.id; state.effortLabel = item.label; saveState(); updateWorkspace(); toast("思考档位已切换", item.label); }
       });
@@ -2202,6 +2764,7 @@
       if (mod && event.key === ",") { event.preventDefault(); openSettings(); }
       if (mod && event.key.toLowerCase() === "f" && !$("#settingsBackdrop").hidden) { event.preventDefault(); $("#settingsSearch").focus(); }
       if (event.key === "Escape") {
+        if (fileContextMenu) { closeFileContextMenu(); return; }
         if (slashPopover) { closeSlashMenu(); return; }
         if (!$("#integrationDetailBackdrop").hidden) { closeIntegrationDetail(); return; }
         $("#accountPopover").hidden = true; $("#branchPopover").hidden = true; $("#branchButton").setAttribute("aria-expanded", "false"); closePicker(); closePalette(); closeSettings();
@@ -2249,5 +2812,11 @@
     await runtimePromise;
     await refreshGitInfo();
     refreshActiveDockPane();
+    startWorkspaceWatch();
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) scheduleWorkspaceInsight();
+    });
+    document.addEventListener("click", () => closeFileContextMenu());
+    window.addEventListener("blur", () => closeFileContextMenu());
   })();
 })();

@@ -133,6 +133,10 @@
                 <button class="effort-picker" id="effortButton"><span id="effortLabel">高思考</span></button>
               </div>
               <div class="composer__submit">
+                <button type="button" class="agent-mode-picker" id="agentModeButton" title="权限模式" aria-expanded="false">
+                  <span id="agentModeLabel">需要审批</span>
+                  <svg><use href="#i-chevron"/></svg>
+                </button>
                 <button class="send-button" id="sendButton" aria-label="发送"><svg><use href="#i-send"/></svg></button>
               </div>
             </div>
@@ -176,7 +180,6 @@
           </section>
         </div>
         <div class="dock-tab-picker" id="dockTabPicker" hidden></div>
-        <div class="inspector__foot"><span class="permission-dot"></span><div><b>工具许可</b><small id="permissionLabel">每次询问</small></div><button class="switch" id="approvalSwitch" role="switch" aria-checked="false"><i></i></button></div>
       </aside>
     </div>
 

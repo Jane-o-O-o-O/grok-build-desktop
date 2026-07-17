@@ -28,6 +28,7 @@
     "files": [
       "main.cjs",
       "preload.cjs",
+      "acp-agent.cjs",
       "provider-config.cjs",
       "native-config.cjs",
       "account-info.cjs",

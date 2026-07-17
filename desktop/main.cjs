@@ -3,6 +3,7 @@ const { spawn, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { AcpAgentRun } = require("./acp-agent.cjs");
 const {
   discoverModels,
   makeProviderId,
@@ -19,6 +20,7 @@ const { readAccountInfo } = require("./account-info.cjs");
 const { createGitBranch, readGitInfo, switchGitBranch } = require("./git-workspace.cjs");
 
 const activeRuns = new Map();
+const acpRuns = new Map();
 const runClients = new Map();
 const terminalSessions = new Map();
 const sessionUpdateBridges = new Map();
@@ -615,6 +617,12 @@ ipcMain.handle("shell:reveal", async (_event, target) => {
   if (typeof target === "string" && target) shell.showItemInFolder(target);
 });
 
+ipcMain.handle("shell:open-path", async (_event, target) => {
+  if (typeof target !== "string" || !target) return { ok: false, error: "路径无效" };
+  const error = await shell.openPath(target);
+  return error ? { ok: false, error } : { ok: true };
+});
+
 ipcMain.handle("shell:external", async (_event, target) => {
   if (typeof target === "string" && /^https?:\/\//.test(target)) await shell.openExternal(target);
 });
@@ -786,32 +794,51 @@ ipcMain.handle("grok:prompt", async (_event, payload) => {
 
   const runId = crypto.randomUUID();
   runClients.set(runId, String(payload.clientId || "main"));
-  const sessionBridge = startSessionUpdateBridge(runId, payload);
   const runtimeEnv = await environmentWithSystemProxy(runtimeEnvironment(), runtimeTargetUrl(payload.model));
-  const child = spawn(binary, buildArgs(payload), {
+  const run = new AcpAgentRun({
+    binary,
     cwd: payload.cwd,
-    windowsHide: true,
     env: {
       ...runtimeEnv,
       GROK_LAUNCH_SOURCE: "grok-desktop",
       GROK_CLIENT_NAME: "grok-desktop"
     },
-    stdio: ["ignore", "pipe", "pipe"]
+    alwaysApprove: Boolean(payload.alwaysApprove),
+    model: payload.model,
+    effort: payload.effort,
+    sessionId: payload.sessionId || null,
+    prompt: effectivePrompt(payload)
   });
+  run.on("event", (data) => emit({ runId, ...data }));
+  const child = run.start();
   activeRuns.set(runId, child);
-  parseLines(runId, child.stdout, "stdout");
-  parseLines(runId, child.stderr, "stderr");
-  child.on("error", (error) => { emit({ runId, type: "error", message: error.message }); sessionBridge.stop(250); });
-  child.on("exit", (code, signal) => {
-    emit({ runId, type: "process_exit", code, signal });
-    sessionBridge.stop(900);
+  acpRuns.set(runId, run);
+  child.on("exit", () => {
+    acpRuns.delete(runId);
     activeRuns.delete(runId);
     setTimeout(() => runClients.delete(runId), 1_200);
   });
   return { ok: true, runId };
 });
 
+ipcMain.handle("grok:permission-respond", async (_event, payload) => {
+  const run = acpRuns.get(payload?.runId);
+  if (!run) return { ok: false, error: "当前没有可应答的 Agent 会话" };
+  return run.respondPermission({
+    toolCallId: payload?.toolCallId,
+    optionId: payload?.optionId,
+    cancelled: Boolean(payload?.cancelled)
+  });
+});
+
 ipcMain.handle("grok:cancel", async (_event, runId) => {
+  const run = acpRuns.get(runId);
+  if (run) {
+    run.cancel();
+    acpRuns.delete(runId);
+    activeRuns.delete(runId);
+    return true;
+  }
   const child = activeRuns.get(runId);
   if (!child) return false;
   child.kill();
