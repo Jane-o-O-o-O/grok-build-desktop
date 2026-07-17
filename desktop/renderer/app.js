@@ -35,6 +35,8 @@
   let savedProviders = [];
   let nativeConfig = { values: {}, raw: "", path: "~/.grok/config.toml", integrations: {} };
   let authState = { signedIn: false, name: "登录 Grok" };
+  let authPollTimer = null;
+  let authPollBusy = false;
   let runtimeState = { connected: false, version: null, binary: null };
   let gitState = { ok: true, isRepo: false, branches: [], dirtyCount: 0 };
   let branchFilter = "";
@@ -1062,20 +1064,43 @@
   async function refreshAuthInfo() {
     authState = api ? await api.authInfo() : { signedIn: false, name: "登录 Grok" };
     updateAccountUI();
+    return authState;
+  }
+
+  function stopAuthPolling() {
+    clearInterval(authPollTimer); authPollTimer = null; authPollBusy = false;
+  }
+
+  function startAuthPolling() {
+    stopAuthPolling(); let checks = 0;
+    authPollTimer = setInterval(async () => {
+      if (authPollBusy) return;
+      authPollBusy = true; checks += 1;
+      try {
+        const info = await refreshAuthInfo();
+        if (info.signedIn) {
+          stopAuthPolling();
+          $("#authProgress").hidden = true;
+          await detectRuntime();
+          toast("Grok 登录完成", info.email || info.name);
+        } else if (checks >= 400) stopAuthPolling();
+      } finally { authPollBusy = false; }
+    }, 1500);
   }
 
   async function toggleAuth() {
     $("#accountPopover").hidden = true;
     if (!api) { toast("账号预览", "Electron 中连接 Grok 账号"); return; }
     if (authState.signedIn) {
+      stopAuthPolling();
       const result = await api.logout();
       if (!result.ok) { toast("退出登录失败", result.error); return; }
       authState = result.info; updateAccountUI(); toast("已退出 Grok", "本地 Runtime 仍可使用第三方模型"); return;
     }
-    $("#authProgress").hidden = false; $("#authProgressText").textContent = "正在打开默认浏览器并启动 Grok OAuth 登录…";
+    $("#authProgress").hidden = false; $("#authProgressText").textContent = "正在连接 auth.x.ai 并生成 Runtime OAuth 授权地址…";
     const result = await api.login();
     if (!result.ok) { $("#authProgressText").textContent = result.error; toast("登录启动失败", result.error); }
-    else toast("正在打开 Grok 登录", "请在默认浏览器中完成账号登录");
+    else { startAuthPolling(); toast("正在连接 Grok 账号", "Runtime OAuth 授权页即将打开"); }
   }
 
   async function openSettings(page = "general") {
@@ -1367,8 +1392,9 @@
     else text.textContent = event.text;
     text.scrollTop = text.scrollHeight;
     if (event.kind === "browser") toast("Grok 登录页面已打开", "请在浏览器完成账号登录");
-    if (event.kind === "complete") setTimeout(async () => { await refreshAuthInfo(); await detectRuntime(); progress.hidden = true; toast("Grok 登录完成", authState.email || authState.name); }, 700);
-    if (event.kind === "error") toast("Grok 登录状态", event.text);
+    if (event.kind === "oauth-browser") toast("Runtime OAuth 授权页已打开", "授权完成后账号会自动同步到应用");
+    if (event.kind === "complete") setTimeout(async () => { stopAuthPolling(); await refreshAuthInfo(); await detectRuntime(); progress.hidden = true; toast("Grok 登录完成", authState.email || authState.name); }, 700);
+    if (event.kind === "error") { stopAuthPolling(); toast("Grok 登录状态", event.text); }
   });
   renderDockTabPicker();
   renderAll();

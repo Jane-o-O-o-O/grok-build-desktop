@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, shell, nativeTheme, safeStorage } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell, nativeTheme, safeStorage, session } = require("electron");
 const { spawn, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -23,6 +23,23 @@ const runClients = new Map();
 const terminalSessions = new Map();
 let mainWindow;
 let activeAuthRun = null;
+let activeAuthUrl = null;
+
+async function environmentWithSystemProxy(baseEnv, targetUrl) {
+  const env = { ...baseEnv };
+  if (env.HTTPS_PROXY || env.https_proxy || env.ALL_PROXY || env.all_proxy) return env;
+  try {
+    const rule = await session.defaultSession.resolveProxy(targetUrl);
+    const entry = String(rule || "").split(";").map((item) => item.trim()).find((item) => /^(PROXY|HTTPS)\s+/i.test(item));
+    if (entry) {
+      const address = entry.replace(/^(PROXY|HTTPS)\s+/i, "");
+      const proxyUrl = `http://${address}`;
+      env.HTTPS_PROXY = proxyUrl; env.HTTP_PROXY = proxyUrl;
+      env.https_proxy = proxyUrl; env.http_proxy = proxyUrl;
+    }
+  } catch {}
+  return env;
+}
 
 function providerStorePath() {
   return process.env.GROK_DESKTOP_PROVIDER_STORE
@@ -258,29 +275,42 @@ ipcMain.handle("auth:info", () => authInfo());
 ipcMain.handle("auth:login", async () => {
   const binary = locateGrok();
   if (!binary) return { ok: false, error: "未检测到 Grok Runtime" };
-  const loginPage = "https://accounts.x.ai/sign-in?redirect=grok-com";
-  try {
-    await shell.openExternal(loginPage);
-  } catch (error) {
-    return { ok: false, error: `打开 Grok 登录页面失败：${error.message}` };
+  if (activeAuthRun) {
+    if (activeAuthUrl) await shell.openExternal(activeAuthUrl);
+    return { ok: true, running: true, browserOpened: Boolean(activeAuthUrl) };
   }
-  if (activeAuthRun) return { ok: true, running: true, browserOpened: true };
+  const authEnv = await environmentWithSystemProxy({ ...process.env, ...providerEnvironment() }, "https://auth.x.ai/.well-known/openid-configuration");
   const child = spawn(binary, ["login", "--oauth"], {
     cwd: app.getPath("home"), windowsHide: true,
-    env: { ...process.env, ...providerEnvironment() }, stdio: ["ignore", "pipe", "pipe"]
+    env: authEnv, stdio: ["ignore", "pipe", "pipe"]
   });
   activeAuthRun = child;
+  const openedOAuthUrls = new Set();
+  let authOutputBuffer = "";
   const send = (kind, chunk) => {
     const text = String(chunk).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "");
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("auth:event", { kind, text });
+    if (kind === "output") authOutputBuffer = `${authOutputBuffer}${text}`.slice(-30_000);
+    for (const match of authOutputBuffer.matchAll(/https:\/\/[^\s<>"']+/gi)) {
+      const raw = match[0].replace(/[),.;]+$/, "");
+      try {
+        const url = new URL(raw);
+        if (url.hostname !== "auth.x.ai" || !url.pathname.startsWith("/oauth2/authorize") || openedOAuthUrls.has(url.href)) continue;
+        openedOAuthUrls.add(url.href);
+        activeAuthUrl = url.href;
+        shell.openExternal(url.href).then(() => {
+          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("auth:event", { kind: "oauth-browser", text: "Runtime OAuth 授权页已打开，完成授权后会自动同步到应用" });
+        }).catch((error) => send("error", error.message));
+      } catch {}
+    }
   };
-  send("browser", "已在默认浏览器中打开 Grok 登录页面；Runtime 正在准备 OAuth 连接");
+  send("preparing", "正在连接 auth.x.ai 并生成 Runtime OAuth 授权地址…");
   child.stdout.setEncoding("utf8"); child.stderr.setEncoding("utf8");
   child.stdout.on("data", (chunk) => send("output", chunk));
   child.stderr.on("data", (chunk) => send("output", chunk));
-  child.on("error", (error) => { send("error", error.message); activeAuthRun = null; });
-  child.on("exit", (code) => { send(code === 0 ? "complete" : "error", code === 0 ? "登录完成" : `登录进程退出：${code}`); activeAuthRun = null; });
-  return { ok: true, running: true, browserOpened: true };
+  child.on("error", (error) => { send("error", error.message); activeAuthRun = null; activeAuthUrl = null; });
+  child.on("exit", (code) => { send(code === 0 ? "complete" : "error", code === 0 ? "登录完成" : `登录进程退出：${code}`); activeAuthRun = null; activeAuthUrl = null; });
+  return { ok: true, running: true, preparing: true };
 });
 
 ipcMain.handle("auth:logout", () => {
@@ -585,7 +615,7 @@ app.whenReady().then(createWindow);
 app.on("window-all-closed", () => {
   for (const child of activeRuns.values()) child.kill();
   for (const terminalId of [...terminalSessions.keys()]) closeTerminalSession(terminalId);
-  if (activeAuthRun) { activeAuthRun.kill(); activeAuthRun = null; }
+  if (activeAuthRun) { activeAuthRun.kill(); activeAuthRun = null; activeAuthUrl = null; }
   if (process.platform !== "darwin") app.quit();
 });
 app.on("activate", () => {
