@@ -7,15 +7,17 @@
   const platform = api?.platform || "web";
   document.documentElement.classList.add(`platform-${platform}`);
   const STORAGE_KEY = "grok-desktop-state-v1";
+  const t = (key, vars) => window.GrokI18n?.t(key, vars) ?? key;
   const PERMISSION_MODES = {
-    auto: { label: "智能审批", nativeValue: "auto" },
-    dontAsk: { label: "严格拒绝", nativeValue: "default" },
-    "always-approve": { label: "完全访问", nativeValue: "always-approve" }
+    auto: { labelKey: "perm.auto", nativeValue: "auto" },
+    dontAsk: { labelKey: "perm.dontAsk", nativeValue: "default" },
+    "always-approve": { labelKey: "perm.alwaysApprove", nativeValue: "always-approve" }
   };
 
   const defaultState = {
     cwd: "",
     theme: "dark",
+    locale: "zh",
     model: "auto",
     modelLabel: "自动模型",
     effort: "high",
@@ -62,90 +64,90 @@
   let branchFilter = "";
 
   const nativeSettingGroups = [
-    { target: "nativeGeneralSettings", title: "原生会话", items: [
-      ["auto_update", "自动更新", "启动时检查并安装 Grok Runtime 更新", "bool"],
-      ["show_tips", "启动提示", "启动原生 TUI 时显示使用提示", "bool"],
-      ["auto_compact", "自动压缩阈值", "上下文达到该百分比后自动压缩", "number", { suffix: "%" }],
-      ["load_envrc", "加载 .envrc", "创建会话时读取工作区环境变量", "bool"],
-      ["remote_fetch", "远程目录", "允许在线获取模型目录等可选信息", "bool"]
+    { target: "nativeGeneralSettings", items: [
+      ["auto_update", "bool"],
+      ["show_tips", "bool"],
+      ["auto_compact", "number", { suffixKey: "unit.percent" }],
+      ["load_envrc", "bool"],
+      ["remote_fetch", "bool"]
     ]},
-    { target: "nativeModelSettings", title: "模型路由", items: [
-      ["default_model", "默认模型", "新会话使用的原生模型", "model"],
-      ["web_search_model", "网页搜索模型", "Web Search 工具使用的模型", "model"]
+    { target: "nativeModelSettings", items: [
+      ["default_model", "model"],
+      ["web_search_model", "model"]
     ]},
-    { target: "nativeAppearanceSettings", title: "主题与布局", items: [
-      ["theme", "TUI 主题", "原生终端界面的颜色主题", "select", { auto: "跟随系统", groknight: "Grok Night", grokday: "Grok Day", tokyonight: "Tokyo Night", "rosepine-moon": "Rose Pine Moon", "oscura-midnight": "Oscura Midnight" }],
-      ["auto_dark_theme", "系统深色主题", "TUI 跟随系统时使用的深色主题", "select", { groknight: "Grok Night", grokday: "Grok Day", tokyonight: "Tokyo Night", "rosepine-moon": "Rose Pine Moon", "oscura-midnight": "Oscura Midnight" }],
-      ["auto_light_theme", "系统浅色主题", "TUI 跟随系统时使用的浅色主题", "select", { groknight: "Grok Night", grokday: "Grok Day", tokyonight: "Tokyo Night", "rosepine-moon": "Rose Pine Moon", "oscura-midnight": "Oscura Midnight" }],
-      ["compact_mode", "紧凑模式", "减少消息区域内外边距", "bool"],
-      ["screen_mode", "屏幕模式", "原生 TUI 默认使用全屏或最小模式", "select", { fullscreen: "全屏", minimal: "最小" }],
-      ["show_timestamps", "显示时间戳", "在用户与 Agent 消息旁显示时间", "bool"],
-      ["show_thinking_blocks", "显示思考块", "流式展示 Agent 的思考和推理内容", "bool"],
-      ["group_tool_verbs", "合并工具调用", "折叠连续读取、搜索、列表与子 Agent 行", "bool"],
-      ["collapsed_edit_blocks", "折叠编辑块", "用单行 +N/-M 摘要展示文件修改", "bool"],
-      ["max_thoughts_width", "思考块最大宽度", "思考面板的列宽预算，范围 40–500", "number"],
-      ["render_mermaid", "Mermaid 图表", "控制 Mermaid 代码块的渲染入口", "select", { auto: "自动", on: "开启", off: "关闭" }],
-      ["display_refresh_auto_cadence", "匹配显示器刷新率", "在高刷新率显示器上提高 TUI 流式和滚动帧率", "bool"]
+    { target: "nativeAppearanceSettings", items: [
+      ["theme", "select", { auto: "choice.system", groknight: "Grok Night", grokday: "Grok Day", tokyonight: "Tokyo Night", "rosepine-moon": "Rose Pine Moon", "oscura-midnight": "Oscura Midnight" }],
+      ["auto_dark_theme", "select", { groknight: "Grok Night", grokday: "Grok Day", tokyonight: "Tokyo Night", "rosepine-moon": "Rose Pine Moon", "oscura-midnight": "Oscura Midnight" }],
+      ["auto_light_theme", "select", { groknight: "Grok Night", grokday: "Grok Day", tokyonight: "Tokyo Night", "rosepine-moon": "Rose Pine Moon", "oscura-midnight": "Oscura Midnight" }],
+      ["compact_mode", "bool"],
+      ["screen_mode", "select", { fullscreen: "choice.fullscreen", minimal: "choice.minimal" }],
+      ["show_timestamps", "bool"],
+      ["show_thinking_blocks", "bool"],
+      ["group_tool_verbs", "bool"],
+      ["collapsed_edit_blocks", "bool"],
+      ["max_thoughts_width", "number"],
+      ["render_mermaid", "select", { auto: "choice.auto", on: "choice.on", off: "choice.off" }],
+      ["display_refresh_auto_cadence", "bool"]
     ]},
-    { target: "nativeInputSettings", title: "编辑与输入", items: [
-      ["simple_mode", "Readline 输入", "使用普通输入而不是实验性 Vim 提示编辑", "bool"],
-      ["vim_mode", "Vim 滚动导航", "使用 h/j/k/l 等按键导航对话历史", "bool"],
-      ["prompt_suggestions", "提示词建议", "每轮后预测下一条输入并以幽灵文字显示", "bool"],
-      ["voice_capture_mode", "语音触发方式", "控制语音快捷键是按住说话还是切换录音", "select", { hold: "按住说话", toggle: "切换录音" }],
-      ["voice_stt_language", "语音识别语言", "Grok STT 的格式化与识别语言", "select", { en: "English", auto: "跟随系统", ar: "العربية", cs: "Čeština", da: "Dansk", nl: "Nederlands", fil: "Filipino", fr: "Français", de: "Deutsch", hi: "हिन्दी", id: "Bahasa Indonesia", it: "Italiano", ja: "日本語", ko: "한국어", mk: "Македонски", ms: "Bahasa Melayu", fa: "فارسی", pl: "Polski", pt: "Português", ro: "Română", ru: "Русский", es: "Español", sv: "Svenska", th: "ไทย", tr: "Türkçe", vi: "Tiếng Việt" }],
-      ["scroll_speed", "滚动速度", "鼠标滚轮和触控板速度，范围 1–100", "number"],
-      ["scroll_mode", "滚动输入", "自动检测或固定为滚轮/触控板", "select", { auto: "自动检测", wheel: "鼠标滚轮", trackpad: "触控板" }],
-      ["scroll_lines", "每次滚动行数", "每个滚动事件移动的行数，范围 1–10", "number"],
-      ["invert_scroll", "反向滚动", "使用自然滚动方向", "bool"],
-      ["keep_text_selection", "文本选择", "控制选择高亮和双击行为", "select", { flash: "短暂高亮", hold: "保持高亮", word_select: "双击选词" }],
-      ["hint_undo", "撤销提示", "清空输入后提示 Ctrl+Z 恢复草稿", "bool"],
-      ["hint_plan_mode", "计划模式提示", "规划类请求时提示使用 Shift+Tab", "bool"],
-      ["hint_image_input", "图片输入提示", "剪贴板存在图片时提示粘贴", "bool"],
-      ["hint_send_now", "立即发送提示", "排队跟进内容后提示立即发送方式", "bool"],
-      ["hint_small_screen", "小屏幕提示", "终端空间较小时提示紧凑模式", "bool"],
-      ["hint_word_select", "单词选择提示", "双击文本后提示终端式选词设置", "bool"]
+    { target: "nativeInputSettings", items: [
+      ["simple_mode", "bool"],
+      ["vim_mode", "bool"],
+      ["prompt_suggestions", "bool"],
+      ["voice_capture_mode", "select", { hold: "choice.hold", toggle: "choice.toggle" }],
+      ["voice_stt_language", "select", { en: "English", auto: "choice.system", ar: "العربية", cs: "Čeština", da: "Dansk", nl: "Nederlands", fil: "Filipino", fr: "Français", de: "Deutsch", hi: "हिन्दी", id: "Bahasa Indonesia", it: "Italiano", ja: "日本語", ko: "한국어", mk: "Македонски", ms: "Bahasa Melayu", fa: "فارسی", pl: "Polski", pt: "Português", ro: "Română", ru: "Русский", es: "Español", sv: "Svenska", th: "ไทย", tr: "Türkçe", vi: "Tiếng Việt" }],
+      ["scroll_speed", "number"],
+      ["scroll_mode", "select", { auto: "choice.autoDetect", wheel: "choice.wheel", trackpad: "choice.trackpad" }],
+      ["scroll_lines", "number"],
+      ["invert_scroll", "bool"],
+      ["keep_text_selection", "select", { flash: "choice.flash", hold: "choice.holdSelect", word_select: "choice.wordSelect" }],
+      ["hint_undo", "bool"],
+      ["hint_plan_mode", "bool"],
+      ["hint_image_input", "bool"],
+      ["hint_send_now", "bool"],
+      ["hint_small_screen", "bool"],
+      ["hint_word_select", "bool"]
     ]},
-    { target: "nativeAgentSettings", title: "执行策略", items: [
-      ["permission_mode", "权限模式", "设置工具操作的默认审批行为", "select", { default: "使用默认", ask: "每次询问", auto: "智能审批", "always-approve": "始终批准" }],
-      ["remember_tool_approvals", "记住工具审批", "在权限提示中提供始终允许此命令选项", "bool"],
-      ["default_selected_permission", "默认选中的权限", "首次权限提示默认聚焦的选项", "select", { always_allow_all_sessions: "所有会话始终允许", allow_command_always: "始终允许此命令", allow_once: "仅允许一次", reject: "拒绝" }],
-      ["ask_question_timeout", "问题等待超时", "用户问题工具在等待过久后结束", "bool"],
-      ["subagents_enabled", "启用子 Agent", "允许 Grok 创建并行或专用子任务", "bool"],
-      ["two_pass_compaction", "两阶段压缩", "使用预取式的两阶段上下文压缩", "bool"],
-      ["fork_secondary_model", "分叉辅助模型", "Fork 时第二个 Agent 使用的模型", "model"],
-      ["cancel_subagents", "取消主任务时的子 Agent", "选择同时停止、继续运行或每次询问", "select", { ask: "每次询问", always_stop: "始终停止", always_continue: "始终继续" }]
+    { target: "nativeAgentSettings", items: [
+      ["permission_mode", "select", { default: "choice.default", ask: "choice.ask", auto: "choice.smartApprove", "always-approve": "choice.alwaysApprove" }],
+      ["remember_tool_approvals", "bool"],
+      ["default_selected_permission", "select", { always_allow_all_sessions: "choice.allowAllSessions", allow_command_always: "choice.allowCommandAlways", allow_once: "choice.allowOnce", reject: "choice.reject" }],
+      ["ask_question_timeout", "bool"],
+      ["subagents_enabled", "bool"],
+      ["two_pass_compaction", "bool"],
+      ["fork_secondary_model", "model"],
+      ["cancel_subagents", "select", { ask: "choice.ask", always_stop: "choice.alwaysStop", always_continue: "choice.alwaysContinue" }]
     ]},
-    { target: "nativeToolSettings", title: "本地工具", items: [
-      ["respect_gitignore", "遵循 .gitignore", "文件工具跳过 Git 忽略的文件", "bool"],
-      ["bash_timeout", "Shell 超时", "前台命令最长运行秒数", "number", { suffix: "秒" }],
-      ["bash_output_limit", "Shell 输出上限", "单次命令保留的最大输出字节数", "number", { suffix: "bytes" }],
-      ["lsp_tools", "LSP 工具", "向 Agent 暴露语言服务器工具", "bool"],
-      ["codebase_indexing", "代码库索引", "启用代码图和代码库索引能力", "bool"]
+    { target: "nativeToolSettings", items: [
+      ["respect_gitignore", "bool"],
+      ["bash_timeout", "number", { suffixKey: "unit.sec" }],
+      ["bash_output_limit", "number", { suffixKey: "unit.bytes" }],
+      ["lsp_tools", "bool"],
+      ["codebase_indexing", "bool"]
     ]},
-    { target: "nativeMemorySettings", title: "跨会话记忆", items: [
-      ["memory_enabled", "启用记忆", "在不同任务之间检索并复用项目知识", "bool"],
-      ["memory_save_on_end", "结束时保存", "会话结束时保存元数据摘要", "bool"],
-      ["memory_watcher", "监听记忆文件", "外部修改记忆文件时自动重新加载", "bool"],
-      ["memory_max_results", "最大检索数量", "每次记忆搜索返回的结果数量", "number"],
-      ["memory_min_score", "最低相关度", "记忆搜索结果的最低分数，范围 0–1", "number", { step: 0.05 }],
-      ["memory_initial_injection", "首次注入记忆", "第一轮自动检索并注入相关记忆", "bool"]
+    { target: "nativeMemorySettings", items: [
+      ["memory_enabled", "bool"],
+      ["memory_save_on_end", "bool"],
+      ["memory_watcher", "bool"],
+      ["memory_max_results", "number"],
+      ["memory_min_score", "number", { step: 0.05 }],
+      ["memory_initial_injection", "bool"]
     ]},
-    { target: "nativeGitSettings", title: "工作区策略", items: [
-      ["new_worktree_mode", "新会话 Worktree", "新建会话时是否询问或自动创建 Worktree", "select", { ask: "每次询问", always: "始终创建", never: "从不创建" }],
-      ["fork_worktree_mode", "分叉 Worktree", "Fork 会话时是否创建独立 Worktree", "select", { ask: "每次询问", always: "始终创建", never: "从不创建" }],
-      ["hunk_tracker_mode", "变更块跟踪", "选择 Agent 需要跟踪的文件变更范围", "select", { agent_only: "仅 Agent 修改", all_dirty: "所有未提交修改", off: "关闭" }]
+    { target: "nativeGitSettings", items: [
+      ["new_worktree_mode", "select", { ask: "choice.ask", always: "choice.always", never: "choice.never" }],
+      ["fork_worktree_mode", "select", { ask: "choice.ask", always: "choice.always", never: "choice.never" }],
+      ["hunk_tracker_mode", "select", { agent_only: "choice.agentOnly", all_dirty: "choice.allDirty", off: "choice.off" }]
     ]},
-    { target: "nativePrivacySettings", title: "本地与诊断数据", items: [
-      ["telemetry", "匿名遥测", "向配置的遥测后端发送匿名使用数据", "bool"],
-      ["feedback", "反馈功能", "启用原生 TUI 的反馈入口", "bool"]
+    { target: "nativePrivacySettings", items: [
+      ["telemetry", "bool"],
+      ["feedback", "bool"]
     ]}
   ];
 
   const dockTypes = {
-    terminal: { title: "终端", icon: "i-terminal", description: "运行本地 Shell 命令" },
-    browser: { title: "浏览器", icon: "i-browser", description: "打开网页与本地服务" },
-    files: { title: "文件", icon: "i-file", description: "浏览和预览工作区文件" },
-    tasks: { title: "侧边任务", icon: "i-tasks", description: "追踪当前 Grok 活动" }
+    terminal: { titleKey: "dock.terminal", icon: "i-terminal", descKey: "dock.terminalDesc" },
+    browser: { titleKey: "dock.browser", icon: "i-browser", descKey: "dock.browserDesc" },
+    files: { titleKey: "dock.files", icon: "i-file", descKey: "dock.filesDesc" },
+    tasks: { titleKey: "dock.sideTasks", icon: "i-tasks", descKey: "dock.tasksDesc" }
   };
 
   const slashCommands = [
@@ -229,6 +231,36 @@
     return "auto";
   }
 
+  function permissionModeLabel(mode) {
+    return t(PERMISSION_MODES[normalizePermissionMode(mode)]?.labelKey || "perm.auto");
+  }
+
+  function effortLabel(id) {
+    return t(`effort.${id}`);
+  }
+
+  function syncLocalizedDefaults() {
+    if (state.model === "auto") state.modelLabel = t("composer.autoModel");
+    if (["low", "medium", "high"].includes(state.effort)) state.effortLabel = effortLabel(state.effort);
+    for (const tab of state.dockTabs) {
+      if (tab.type === "tasks") tab.title = t("dock.sideTasks");
+    }
+  }
+
+  function applyLocale() {
+    window.GrokI18n?.setLocale(state.locale);
+    window.GrokI18n?.applyDom();
+    if ($("#localeSelect")) $("#localeSelect").value = state.locale;
+    syncLocalizedDefaults();
+    updateAccountUI();
+    renderNativeSettings();
+    renderIntegrationSummary();
+    renderSavedProviders();
+    updateProviderSelection();
+    if (!activeRun) setSessionStateText(t("toolbar.ready"));
+    renderAll();
+  }
+
   function nativePermissionMode(value) {
     return PERMISSION_MODES[normalizePermissionMode(value)].nativeValue;
   }
@@ -238,6 +270,7 @@
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
       const merged = { ...defaultState, ...saved, attachments: [] };
       merged.permissionMode = normalizePermissionMode(saved?.permissionMode || (saved?.alwaysApprove ? "always-approve" : "auto"));
+      merged.locale = saved?.locale === "en" ? "en" : "zh";
       delete merged.alwaysApprove;
       if (!Array.isArray(merged.dockTabs) || !merged.dockTabs.length) merged.dockTabs = structuredClone(defaultState.dockTabs);
       merged.dockTabs = merged.dockTabs
@@ -311,11 +344,11 @@
     return state.threads.find((thread) => thread.id === state.activeThreadId) || null;
   }
 
-  function createThread(title = "新会话") {
+  function createThread(title = null) {
     const thread = {
       id: uid(),
       sessionId: null,
-      title,
+      title: title || t("thread.new"),
       cwd: state.cwd,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -393,13 +426,13 @@
   function welcomeMarkup() {
     return `<div class="welcome">
       <div class="welcome-mark" aria-hidden="true"></div>
-      <h1>构建下一件重要的事。</h1>
-      <p>Grok Build 已连接到你的本地工作区。描述目标，它会理解代码、执行工具并验证结果。</p>
+      <h1>${escapeHtml(t("welcome.title"))}</h1>
+      <p>${escapeHtml(t("welcome.body"))}</p>
       <div class="quick-actions">
-        <button class="quick-action" data-prompt="分析这个代码库的架构，并指出最值得优先改进的三个地方"><b>理解代码库</b><small>绘制架构与依赖关系</small><svg><use href="#i-arrow-up"/></svg></button>
-        <button class="quick-action" data-prompt="检查当前 Git 改动，找出潜在 bug 并直接修复"><b>审查当前改动</b><small>检查风险并运行验证</small><svg><use href="#i-arrow-up"/></svg></button>
-        <button class="quick-action" data-prompt="运行项目测试，定位失败原因并修复"><b>修复测试</b><small>执行、诊断、迭代</small><svg><use href="#i-arrow-up"/></svg></button>
-        <button class="quick-action" data-prompt="为这个项目补充一份清晰的开发者文档"><b>整理项目文档</b><small>生成可维护的说明</small><svg><use href="#i-arrow-up"/></svg></button>
+        <button class="quick-action" data-prompt="分析这个代码库的架构，并指出最值得优先改进的三个地方"><b>${escapeHtml(t("welcome.q1.title"))}</b><small>${escapeHtml(t("welcome.q1.desc"))}</small><svg><use href="#i-arrow-up"/></svg></button>
+        <button class="quick-action" data-prompt="检查当前 Git 改动，找出潜在 bug 并直接修复"><b>${escapeHtml(t("welcome.q2.title"))}</b><small>${escapeHtml(t("welcome.q2.desc"))}</small><svg><use href="#i-arrow-up"/></svg></button>
+        <button class="quick-action" data-prompt="运行项目测试，定位失败原因并修复"><b>${escapeHtml(t("welcome.q3.title"))}</b><small>${escapeHtml(t("welcome.q3.desc"))}</small><svg><use href="#i-arrow-up"/></svg></button>
+        <button class="quick-action" data-prompt="为这个项目补充一份清晰的开发者文档"><b>${escapeHtml(t("welcome.q4.title"))}</b><small>${escapeHtml(t("welcome.q4.desc"))}</small><svg><use href="#i-arrow-up"/></svg></button>
       </div>
     </div>`;
   }
@@ -416,11 +449,11 @@
 
   function toolStatusLabel(message) {
     const status = toolStatus(message.status, message.exitCode);
-    if (status === "completed") return "已完成";
-    if (status === "failed") return message.status === "cancelled" ? "已停止" : "执行异常";
-    if (status === "waiting_permission") return "权限判定";
-    if (status === "in_progress") return "执行中";
-    return "准备中";
+    if (status === "completed") return t("tool.completed");
+    if (status === "failed") return message.status === "cancelled" ? t("tool.cancelled") : t("tool.failed");
+    if (status === "waiting_permission") return t("tool.permission");
+    if (status === "in_progress") return t("tool.running");
+    return t("tool.pending");
   }
 
   function toolIcon(message) {
@@ -435,15 +468,15 @@
 
   function toolVerbTitle(message) {
     const value = `${message.toolName || ""} ${message.kindName || ""} ${message.title || ""}`.toLowerCase();
-    if (/search_replace|edit|write|patch|replace/.test(value)) return "编辑文件";
-    if (/read_file|read\b/.test(value)) return "读取文件";
-    if (/glob|list_dir|list\b/.test(value)) return "浏览文件";
-    if (/grep|search/.test(value)) return "搜索代码";
-    if (/run_terminal|bash|shell|terminal|command|execute/.test(value)) return "运行命令";
-    if (/web_fetch|fetch|browser/.test(value)) return "访问网页";
-    if (/web_search/.test(value)) return "网络搜索";
-    if (/todo|task/.test(value)) return "更新任务";
-    return message.title || message.toolName || "工具调用";
+    if (/search_replace|edit|write|patch|replace/.test(value)) return t("tool.editFile");
+    if (/read_file|read\b/.test(value)) return t("tool.readFile");
+    if (/glob|list_dir|list\b/.test(value)) return t("tool.browseFiles");
+    if (/grep|search/.test(value)) return t("tool.searchCode");
+    if (/run_terminal|bash|shell|terminal|command|execute/.test(value)) return t("tool.runCommand");
+    if (/web_fetch|fetch|browser/.test(value)) return t("tool.openWeb");
+    if (/web_search/.test(value)) return t("tool.webSearch");
+    if (/todo|task/.test(value)) return t("tool.updateTask");
+    return message.title || message.toolName || t("tool.generic");
   }
 
   function nestedToolValue(value, keys) {
@@ -457,7 +490,7 @@
 
   function toolInputSummary(message) {
     const raw = nestedToolValue(message.input, ["command", "path", "file_path", "query", "url", "pattern", "description"])
-      || message.description || message.toolName || message.kindName || "Runtime 工具";
+      || message.description || message.toolName || message.kindName || t("tool.runtimeTool");
     return String(raw).replace(/\s+/g, " ").trim().slice(0, 160);
   }
 
@@ -493,7 +526,7 @@
     const hasText = Boolean(String(message.text || "").trim());
     const active = Boolean(running) && !hasText;
     return `<details class="thinking-block ${side ? "thinking-block--side" : ""} ${active ? "is-active" : ""}" ${active ? "open" : ""}>
-      <summary><span class="thinking-block__signal">${active ? '<i></i><i></i><i></i>' : '<svg><use href="#i-check"/></svg>'}</span><b>${active ? "正在思考" : "思考过程"}</b><span class="thinking-block__chevron"><svg><use href="#i-chevron"/></svg></span></summary>
+      <summary><span class="thinking-block__signal">${active ? '<i></i><i></i><i></i>' : '<svg><use href="#i-check"/></svg>'}</span><b>${active ? escapeHtml(t("thinking.active")) : escapeHtml(t("thinking.done"))}</b><span class="thinking-block__chevron"><svg><use href="#i-chevron"/></svg></span></summary>
       <div class="thinking-block__content">${escapeHtml(message.thought)}</div>
     </details>`;
   }
@@ -541,11 +574,11 @@
     const waiting = tools.some((tool) => toolStatus(tool.status, tool.exitCode) === "waiting_permission");
     const doneCount = tools.filter((tool) => toolStatus(tool.status, tool.exitCode) === "completed").length;
     const open = waiting || liveCount > 0 || failedCount > 0;
-    const label = waiting ? "权限判定" : liveCount ? `执行中 ${doneCount}/${tools.length}` : failedCount ? `${failedCount} 步异常` : `已完成 ${tools.length} 步`;
+    const label = waiting ? t("tool.waitConfirm") : liveCount ? t("tool.runningProgress", { done: doneCount, total: tools.length }) : failedCount ? t("tool.failedCount", { count: failedCount }) : t("tool.doneCount", { count: tools.length });
     return `<section class="tool-steps ${open ? "is-open" : ""} ${waiting ? "is-waiting" : ""} ${liveCount ? "is-live" : ""}" data-tool-group>
       <button type="button" class="tool-steps__summary" data-tool-group-toggle>
         <span class="tool-steps__signal">${liveCount || waiting ? "<i></i>" : '<svg><use href="#i-check"/></svg>'}</span>
-        <span class="tool-steps__copy"><b>执行步骤 · ${tools.length}</b><small>${escapeHtml(label)}</small></span>
+        <span class="tool-steps__copy"><b>${escapeHtml(t("tool.steps", { count: tools.length }))}</b><small>${escapeHtml(label)}</small></span>
         <span class="tool-steps__chevron"><svg><use href="#i-chevron"/></svg></span>
       </button>
       <div class="tool-steps__body">${tools.map((tool) => toolMessageMarkup(tool, side, waiting && toolStatus(tool.status, tool.exitCode) === "waiting_permission")).join("")}</div>
@@ -677,14 +710,14 @@
     const failedCount = tools.filter((tool) => toolStatus(tool.status, tool.exitCode) === "failed").length;
     const waiting = tools.some((tool) => toolStatus(tool.status, tool.exitCode) === "waiting_permission");
     const doneCount = tools.filter((tool) => toolStatus(tool.status, tool.exitCode) === "completed").length;
-    const label = waiting ? "等待确认" : liveCount ? `执行中 ${doneCount}/${tools.length}` : failedCount ? `${failedCount} 步异常` : `已完成 ${tools.length} 步`;
+    const label = waiting ? t("tool.waitConfirm") : liveCount ? t("tool.runningProgress", { done: doneCount, total: tools.length }) : failedCount ? t("tool.failedCount", { count: failedCount }) : t("tool.doneCount", { count: tools.length });
     group.classList.toggle("is-waiting", waiting);
     group.classList.toggle("is-live", liveCount > 0);
     if (waiting || liveCount > 0 || failedCount > 0) group.classList.add("is-open");
     const title = group.querySelector(".tool-steps__copy b");
     const small = group.querySelector(".tool-steps__copy small");
     const signal = group.querySelector(".tool-steps__signal");
-    if (title) title.textContent = `执行步骤 · ${tools.length}`;
+    if (title) title.textContent = t("tool.steps", { count: tools.length });
     if (small) small.textContent = label;
     if (signal) signal.innerHTML = liveCount || waiting ? "<i></i>" : '<svg><use href="#i-check"/></svg>';
   }
@@ -855,7 +888,7 @@
   function renderThreads() {
     const target = $("#threadList");
     if (!state.threads.length) {
-      target.innerHTML = '<div class="context-empty" style="margin:8px"><span>还没有任务<br>从上方新建一个</span></div>';
+      target.innerHTML = `<div class="context-empty" style="margin:8px"><span>${escapeHtml(t("sidebar.emptyThreads"))}<br>${escapeHtml(t("sidebar.emptyThreadsHint"))}</span></div>`;
       return;
     }
     const groups = groupThreads(state.threads);
@@ -875,7 +908,7 @@
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const yesterday = today.getTime() - 86400000;
     return threads.reduce((groups, thread) => {
-      const label = thread.updatedAt >= today.getTime() ? "今天" : thread.updatedAt >= yesterday ? "昨天" : "更早";
+      const label = thread.updatedAt >= today.getTime() ? t("thread.today") : thread.updatedAt >= yesterday ? t("thread.yesterday") : t("thread.earlier");
       (groups[label] ||= []).push(thread); return groups;
     }, {});
   }
@@ -1581,9 +1614,9 @@
 
   function updateWorkspace() {
     const name = basename(state.cwd);
-    $("#workspaceName").textContent = name;
-    $("#workspacePath").textContent = state.cwd;
-    $("#cwdLabel").textContent = name;
+    $("#workspaceName").textContent = name || t("sidebar.pickWorkspace");
+    $("#workspacePath").textContent = state.cwd || t("sidebar.noWorkspace");
+    $("#cwdLabel").textContent = name || t("composer.notSelected");
     $("#modelLabel").textContent = state.modelLabel;
     $("#effortLabel").textContent = state.effortLabel;
   }
@@ -1595,10 +1628,11 @@
   function updateSwitches() {
     const modeButton = $("#agentModeButton");
     const modeLabel = $("#agentModeLabel");
-    if (modeLabel) modeLabel.textContent = PERMISSION_MODES[state.permissionMode].label;
+    if (modeLabel) modeLabel.textContent = permissionModeLabel(state.permissionMode);
     modeButton?.classList.toggle("is-elevated", state.permissionMode === "always-approve");
     modeButton?.setAttribute("aria-expanded", "false");
     $("#themeSelect").value = state.theme;
+    if ($("#localeSelect")) $("#localeSelect").value = state.locale;
   }
 
   function openAgentModePicker(anchor) {
@@ -1606,9 +1640,9 @@
       align: "right",
       selected: state.permissionMode,
       items: [
-        { id: "auto", label: "智能审批" },
-        { id: "dontAsk", label: "严格拒绝" },
-        { id: "always-approve", label: "完全访问" }
+        { id: "auto", label: permissionModeLabel("auto") },
+        { id: "dontAsk", label: permissionModeLabel("dontAsk") },
+        { id: "always-approve", label: permissionModeLabel("always-approve") }
       ],
       onSelect: async (item) => {
         const previous = state.permissionMode;
@@ -1623,14 +1657,14 @@
             state.permissionMode = previous;
             saveState();
             updateSwitches();
-            toast("模式保存失败", result.error);
+            toast(t("toast.modeSaveFailed"), result.error);
             return;
           }
           nativeConfig.values.permission_mode = result.value;
           nativeConfig.raw = result.raw;
           if ($("#rawConfigEditor")) $("#rawConfigEditor").value = result.raw || "";
         }
-        toast(PERMISSION_MODES[next].label, "");
+        toast(permissionModeLabel(next), "");
       }
     });
   }
@@ -1670,7 +1704,7 @@
     const button = $("#sendButton");
     document.documentElement.classList.toggle("is-running", running);
     $("#sessionState").classList.toggle("is-running", running);
-    setSessionStateText(running ? "Grok 正在工作" : "准备就绪");
+    setSessionStateText(running ? t("session.working") : t("toolbar.ready"));
     button.classList.toggle("is-stop", running);
     button.innerHTML = `<svg><use href="#${running ? "i-stop" : "i-send"}"/></svg>`;
     if (running) {
@@ -1681,19 +1715,19 @@
   }
 
   function setSessionStateText(label) {
-    const target = $("#sessionState");
-    if (!target) return;
-    const textNode = [...target.childNodes].find((node) => node.nodeType === Node.TEXT_NODE);
-    if (textNode) textNode.textContent = label;
-    else target.append(document.createTextNode(label));
+    const target = $("#sessionStateLabel");
+    if (target) target.textContent = label;
   }
 
   function phaseLabel(phase) {
     return ({
-      waiting_for_model: "等待模型响应", streaming_reasoning: "Grok 正在思考",
-      streaming_text: "Grok 正在回答", tool_execution: "正在执行工具",
-      permission_prompt: "权限策略判定", compacting: "正在整理上下文"
-    })[phase] || "Grok 正在工作";
+      waiting_for_model: t("session.waitModel"),
+      streaming_reasoning: t("session.thinking"),
+      streaming_text: t("session.answering"),
+      tool_execution: t("session.tool"),
+      permission_prompt: t("session.waitPermission"),
+      compacting: t("session.compacting")
+    })[phase] || t("session.working");
   }
 
   function ensureActiveAssistant(continuation = false) {
@@ -1878,20 +1912,15 @@
   function closePalette() { $("#paletteBackdrop").hidden = true; }
   function renderPalette(query) {
     const actions = [
-      { title: "新建任务", meta: "Ctrl N", icon: "i-plus", run: () => createThread() },
-      { title: "选择工作区", meta: basename(state.cwd), icon: "i-folder", run: chooseWorkspace },
-      { title: "切换任务脉络", meta: "Ctrl Shift I", icon: "i-panel", run: () => { state.inspectorOpen = !state.inspectorOpen; saveState(); updateLayout(); } },
-      { title: "桌面设置", meta: "Ctrl ,", icon: "i-settings", run: openSettings }
+      { title: t("palette.newTask"), meta: "Ctrl N", icon: "i-plus", run: () => createThread() },
+      { title: t("palette.pickWorkspace"), meta: basename(state.cwd) || t("composer.notSelected"), icon: "i-folder", run: chooseWorkspace },
+      { title: t("palette.toggleInspector"), meta: "Ctrl Shift I", icon: "i-panel", run: () => { state.inspectorOpen = !state.inspectorOpen; saveState(); updateLayout(); } },
+      { title: t("palette.desktopSettings"), meta: "Ctrl ,", icon: "i-settings", run: openSettings }
     ];
-    const matches = [...actions, ...state.threads.map((thread) => ({ title: thread.title, meta: "历史任务", icon: "i-terminal", run: () => { state.activeThreadId = thread.id; saveState(); renderAll(); } }))].filter((item) => item.title.toLowerCase().includes(query.toLowerCase()));
-    $("#paletteResults").innerHTML = `<div class="palette-group">快速操作</div>${matches.map((item, index) => `<button class="palette-item ${index === 0 ? "is-selected" : ""}" data-palette="${index}"><svg><use href="#${item.icon}"/></svg><span>${escapeHtml(item.title)}</span><small>${escapeHtml(item.meta)}</small></button>`).join("") || '<div class="context-empty">没有匹配项</div>'}`;
+    const matches = [...actions, ...state.threads.map((thread) => ({ title: thread.title, meta: t("thread.history"), icon: "i-terminal", run: () => { state.activeThreadId = thread.id; saveState(); renderAll(); } }))].filter((item) => item.title.toLowerCase().includes(query.toLowerCase()));
+    $("#paletteResults").innerHTML = `<div class="palette-group">${escapeHtml(t("palette.quickActions"))}</div>${matches.map((item, index) => `<button class="palette-item ${index === 0 ? "is-selected" : ""}" data-palette="${index}"><svg><use href="#${item.icon}"/></svg><span>${escapeHtml(item.title)}</span><small>${escapeHtml(item.meta)}</small></button>`).join("") || `<div class="context-empty">${escapeHtml(t("palette.noMatch"))}</div>`}`;
     $$('[data-palette]').forEach((button) => button.addEventListener("click", () => { matches[Number(button.dataset.palette)].run(); closePalette(); }));
   }
-  const settingPageTitles = {
-    account: "账号", general: "常规", models: "模型", appearance: "外观", input: "输入与交互",
-    agent: "Agent 与权限", tools: "工具", memory: "记忆", git: "Git 与 Worktree",
-    integrations: "集成", privacy: "数据与隐私", advanced: "配置文件"
-  };
   const settingTargetPages = {
     nativeGeneralSettings: "general", nativeModelSettings: "models", nativeAppearanceSettings: "appearance",
     nativeInputSettings: "input", nativeAgentSettings: "agent", nativeToolSettings: "tools",
@@ -1899,31 +1928,56 @@
   };
   let settingsSearchPage = "general";
 
+  function settingPageTitle(page) {
+    return t(`settings.nav.${page}`) || page;
+  }
+
+  function nativeSettingTitle(id) {
+    return t(`native.${id}.title`);
+  }
+
+  function nativeSettingDesc(id) {
+    return t(`native.${id}.desc`);
+  }
+
+  function nativeGroupTitle(target) {
+    return t(`native.group.${target}`);
+  }
+
+  function resolveChoiceLabel(label) {
+    if (typeof label !== "string") return String(label ?? "");
+    return label.includes(".") ? t(label) : label;
+  }
+
   function settingsSearchCatalog() {
     const staticEntries = [
-      { id: "desktop-theme", page: "general", section: "常规", title: "桌面界面主题", description: "仅控制 Grok Build 桌面外观", anchor: "themeSelect" },
-      { id: "account-profile", page: "account", section: "账号", title: "Grok 账号", description: "登录身份、团队信息与账号入口", anchor: "settingsAuthButton" },
-      { id: "runtime-detect", page: "account", section: "账号", title: "Grok Runtime", description: "检测本地 Runtime 路径与版本", anchor: "refreshRuntime" },
-      { id: "provider-models", page: "models", section: "第三方模型", title: "第三方模型", description: "发现并保存 OpenAI / Anthropic 兼容服务", anchor: "providerUrl" },
-      { id: "integrations-overview", page: "integrations", section: "集成", title: "集成概览", description: "MCP、插件、Skills、Hooks 与 Agents", anchor: "integrationGrid" },
-      { id: "raw-config", page: "advanced", section: "配置文件", title: "原生配置文件", description: "编辑 ~/.grok/config.toml", anchor: "rawConfigEditor" }
+      { id: "desktop-theme", page: "general", section: t("settings.nav.general"), title: t("settings.search.desktopTheme"), description: t("settings.search.desktopThemeDesc"), anchor: "themeSelect" },
+      { id: "desktop-locale", page: "general", section: t("settings.nav.general"), title: t("settings.general.locale"), description: t("settings.general.localeDesc"), anchor: "localeSelect" },
+      { id: "account-profile", page: "account", section: t("settings.nav.account"), title: t("settings.search.accountProfile"), description: t("settings.search.accountProfileDesc"), anchor: "settingsAuthButton" },
+      { id: "runtime-detect", page: "account", section: t("settings.nav.account"), title: t("settings.search.runtimeDetect"), description: t("settings.search.runtimeDetectDesc"), anchor: "refreshRuntime" },
+      { id: "provider-models", page: "models", section: t("settings.models.thirdParty"), title: t("settings.search.providerModels"), description: t("settings.search.providerModelsDesc"), anchor: "providerUrl" },
+      { id: "integrations-overview", page: "integrations", section: t("settings.nav.integrations"), title: t("settings.search.integrations"), description: t("settings.search.integrationsDesc"), anchor: "integrationGrid" },
+      { id: "raw-config", page: "advanced", section: t("settings.nav.advanced"), title: t("settings.search.rawConfig"), description: t("settings.search.rawConfigDesc"), anchor: "rawConfigEditor" }
     ];
     const nativeEntries = nativeSettingGroups.flatMap((group) => {
       const page = settingTargetPages[group.target];
-      return group.items.map((item) => ({
-        id: item[0],
-        page,
-        section: group.title,
-        title: item[1],
-        description: item[2],
-        keywords: item[0],
-        rowId: item[0]
-      }));
+      return group.items.map((item) => {
+        const id = item[0];
+        return {
+          id,
+          page,
+          section: nativeGroupTitle(group.target),
+          title: nativeSettingTitle(id),
+          description: nativeSettingDesc(id),
+          keywords: id,
+          rowId: id
+        };
+      });
     });
     return [...staticEntries, ...nativeEntries].map((entry) => ({
       ...entry,
-      pageTitle: settingPageTitles[entry.page] || entry.page,
-      haystack: `${entry.title} ${entry.description} ${entry.section || ""} ${settingPageTitles[entry.page] || ""} ${entry.keywords || ""} ${entry.id}`.toLowerCase()
+      pageTitle: settingPageTitle(entry.page),
+      haystack: `${entry.title} ${entry.description} ${entry.section || ""} ${settingPageTitle(entry.page)} ${entry.keywords || ""} ${entry.id}`.toLowerCase()
     }));
   }
 
@@ -1982,7 +2036,7 @@
     const matches = settingsSearchCatalog()
       .map((entry) => ({ entry, score: scoreSettingsMatch(entry, tokens) }))
       .filter(({ entry }) => matchSettingsTokens(entry.haystack, tokens))
-      .sort((a, b) => b.score - a.score || a.entry.title.localeCompare(b.entry.title, "zh"))
+      .sort((a, b) => b.score - a.score || a.entry.title.localeCompare(b.entry.title, state.locale === "en" ? "en" : "zh"))
       .map(({ entry }) => entry);
 
     const grouped = new Map();
@@ -2001,16 +2055,16 @@
     });
     results.hidden = false;
     if (!matches.length) {
-      results.innerHTML = `<div class="settings-panel__heading"><h3>搜索结果</h3><p>没有与「${escapeHtml(query.trim())}」匹配的设置</p></div><div class="settings-search-empty">试试更短的关键词，例如「主题」「权限」「模型」</div>`;
+      results.innerHTML = `<div class="settings-panel__heading"><h3>${escapeHtml(t("settings.search.title"))}</h3><p>${escapeHtml(t("settings.search.empty", { query: query.trim() }))}</p></div><div class="settings-search-empty">${escapeHtml(t("settings.search.hint"))}</div>`;
       return;
     }
-    results.innerHTML = `<div class="settings-panel__heading"><h3>搜索结果</h3><p>${matches.length} 项匹配 · 点击可跳转到对应设置</p></div>${[...grouped.entries()].map(([page, items]) => `
+    results.innerHTML = `<div class="settings-panel__heading"><h3>${escapeHtml(t("settings.search.title"))}</h3><p>${escapeHtml(t("settings.search.matches", { count: matches.length }))}</p></div>${[...grouped.entries()].map(([page, items]) => `
       <div class="settings-search-group">
-        <h4>${escapeHtml(settingPageTitles[page] || page)}</h4>
+        <h4>${escapeHtml(settingPageTitle(page))}</h4>
         <div class="settings-search-list">${items.map((entry) => `
           <button type="button" class="settings-search-hit" data-search-id="${escapeHtml(entry.id)}">
             <span><b>${escapeHtml(entry.title)}</b><small>${escapeHtml(entry.description)}</small></span>
-            <em>${escapeHtml(entry.section || settingPageTitles[page] || page)}</em>
+            <em>${escapeHtml(entry.section || settingPageTitle(page))}</em>
           </button>`).join("")}</div>
       </div>`).join("")}`;
     $$('[data-search-id]', results).forEach((button) => button.addEventListener("click", () => {
@@ -2020,28 +2074,36 @@
   }
 
   function modelSettingOptions(current) {
-    const values = [{ id: "", label: "使用 Runtime 默认值" }, ...runtimeModels.filter((item) => item.id !== "auto")];
+    const values = [{ id: "", label: t("settings.model.runtimeDefault") }, ...runtimeModels.filter((item) => item.id !== "auto")];
     if (current && !values.some((item) => item.id === current)) values.push({ id: current, label: current });
     return values;
   }
 
   function settingControl(item) {
-    const [id, , , type, choices = {}] = item;
+    const [id, type, choices = {}] = item;
     const value = nativeConfig.values?.[id];
     if (type === "bool") return `<div class="native-setting-control"><button class="switch" data-native-setting="${id}" role="switch" aria-checked="${Boolean(value)}"><i></i></button></div>`;
     if (type === "model") {
       return `<div class="native-setting-control"><select data-native-setting="${id}">${modelSettingOptions(value).map((option) => `<option value="${escapeHtml(option.id)}" ${option.id === value ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></div>`;
     }
-    if (type === "select") return `<div class="native-setting-control"><select data-native-setting="${id}">${Object.entries(choices).map(([optionValue, label]) => `<option value="${escapeHtml(optionValue)}" ${optionValue === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></div>`;
+    if (type === "select") {
+      return `<div class="native-setting-control"><select data-native-setting="${id}">${Object.entries(choices).map(([optionValue, label]) => `<option value="${escapeHtml(optionValue)}" ${optionValue === value ? "selected" : ""}>${escapeHtml(resolveChoiceLabel(label))}</option>`).join("")}</select></div>`;
+    }
     const step = choices.step || 1;
-    return `<div class="native-setting-control"><input type="number" step="${step}" value="${Number(value ?? 0)}" data-native-setting="${id}"/>${choices.suffix ? `<span class="native-setting-affix">${escapeHtml(choices.suffix)}</span>` : ""}</div>`;
+    const suffix = choices.suffixKey ? t(choices.suffixKey) : (choices.suffix || "");
+    return `<div class="native-setting-control"><input type="number" step="${step}" value="${Number(value ?? 0)}" data-native-setting="${id}"/>${suffix ? `<span class="native-setting-affix">${escapeHtml(suffix)}</span>` : ""}</div>`;
   }
 
   function renderNativeSettings() {
     for (const group of nativeSettingGroups) {
       const target = $(`#${group.target}`);
       if (!target) continue;
-      target.innerHTML = `<div class="native-settings-group"><h4>${escapeHtml(group.title)}</h4><div class="settings-card">${group.items.map((item) => `<div class="settings-row" data-setting-row="${item[0]}" data-search-text="${escapeHtml(`${item[1]} ${item[2]} ${item[0]}`.toLowerCase())}"><span><b>${escapeHtml(item[1])}</b><small>${escapeHtml(item[2])}</small></span>${settingControl(item)}</div>`).join("")}</div></div>`;
+      target.innerHTML = `<div class="native-settings-group"><h4>${escapeHtml(nativeGroupTitle(group.target))}</h4><div class="settings-card">${group.items.map((item) => {
+        const id = item[0];
+        const title = nativeSettingTitle(id);
+        const desc = nativeSettingDesc(id);
+        return `<div class="settings-row" data-setting-row="${id}" data-search-text="${escapeHtml(`${title} ${desc} ${id}`.toLowerCase())}"><span><b>${escapeHtml(title)}</b><small>${escapeHtml(desc)}</small></span>${settingControl(item)}</div>`;
+      }).join("")}</div></div>`;
     }
     $$('[data-native-setting]').forEach((control) => {
       if (control.matches("button")) control.addEventListener("click", () => applyNativeSetting(control.dataset.nativeSetting, control.getAttribute("aria-checked") !== "true", control));
@@ -2053,7 +2115,7 @@
     control.disabled = true;
     const result = api ? await api.setNativeSetting(id, value) : { ok: true, value };
     control.disabled = false;
-    if (!result.ok) { toast("设置保存失败", result.error); return; }
+    if (!result.ok) { toast(t("settings.saveFailed"), result.error); return; }
     nativeConfig.values[id] = result.value;
     if (result.raw != null) { nativeConfig.raw = result.raw; $("#rawConfigEditor").value = result.raw; }
     if (control.matches("button")) control.setAttribute("aria-checked", String(Boolean(result.value)));
@@ -2061,12 +2123,12 @@
   }
 
   const integrationCatalog = {
-    mcp: { icon: "i-terminal", label: "MCP Servers", empty: "还没有配置 MCP Server" },
-    plugins: { icon: "i-tasks", label: "Plugins", empty: "plugins 目录为空" },
-    skills: { icon: "i-file", label: "Skills", empty: "skills 目录为空" },
-    hooks: { icon: "i-terminal", label: "Hooks", empty: "hooks 目录为空" },
-    agents: { icon: "i-user", label: "Agents", empty: "agents 目录为空" },
-    models: { icon: "i-sliders", label: "Custom Models", empty: "还没有自定义模型段落" }
+    mcp: { icon: "i-terminal", labelKey: "integration.label.mcp", emptyKey: "integration.empty.mcp" },
+    plugins: { icon: "i-tasks", labelKey: "integration.label.plugins", emptyKey: "integration.empty.plugins" },
+    skills: { icon: "i-file", labelKey: "integration.label.skills", emptyKey: "integration.empty.skills" },
+    hooks: { icon: "i-terminal", labelKey: "integration.label.hooks", emptyKey: "integration.empty.hooks" },
+    agents: { icon: "i-user", labelKey: "integration.label.agents", emptyKey: "integration.empty.agents" },
+    models: { icon: "i-sliders", labelKey: "integration.label.models", emptyKey: "integration.empty.models" }
   };
   let activeIntegrationKey = null;
 
@@ -2092,15 +2154,16 @@
     const meta = integrationCatalog[key];
     const entry = integrationEntry(key);
     if (!meta) return;
+    const label = t(meta.labelKey);
     activeIntegrationKey = key;
-    $("#integrationDetailSource").textContent = meta.label.toUpperCase();
-    $("#integrationDetailTitle").textContent = meta.label;
+    $("#integrationDetailSource").textContent = label.toUpperCase();
+    $("#integrationDetailTitle").textContent = label;
     $("#integrationDetailPath").textContent = entry.path || "—";
     const list = $("#integrationDetailList");
     list.innerHTML = entry.items.length
       ? entry.items.map((item) => `<div class="integration-detail-item"><svg><use href="#${meta.icon}"/></svg><span>${escapeHtml(item)}</span></div>`).join("")
-      : `<div class="integration-detail-empty">${escapeHtml(meta.empty)}</div>`;
-    $("#integrationDetailOpen").textContent = entry.source === "config.toml" ? "打开配置" : "打开目录";
+      : `<div class="integration-detail-empty">${escapeHtml(t(meta.emptyKey))}</div>`;
+    $("#integrationDetailOpen").textContent = entry.source === "config.toml" ? t("integration.openConfig") : t("integration.openDir");
     $("#integrationDetailBackdrop").hidden = false;
   }
 
@@ -2108,7 +2171,7 @@
     const entry = integrationEntry(activeIntegrationKey);
     if (!entry.path) return;
     if (api?.revealPath) await api.revealPath(entry.path);
-    else toast("预览模式", entry.path);
+    else toast(t("preview.mode"), entry.path);
   }
 
   async function openActiveIntegration() {
@@ -2116,23 +2179,23 @@
     if (!entry.path) return;
     if (entry.source === "config.toml") {
       if (api?.openNativeConfig) await api.openNativeConfig();
-      else toast("预览模式", "打开原生配置文件");
+      else toast(t("preview.mode"), t("settings.search.rawConfig"));
       return;
     }
     if (api?.revealPath) await api.revealPath(entry.path);
-    else toast("预览模式", entry.path);
+    else toast(t("preview.mode"), entry.path);
   }
 
   function renderIntegrationSummary() {
     const items = Object.entries(integrationCatalog).map(([key, meta]) => {
       const entry = integrationEntry(key);
-      return [key, meta.icon, meta.label, entry.count];
+      return [key, meta.icon, t(meta.labelKey), entry.count];
     });
     $("#integrationGrid").innerHTML = items.map(([key, icon, label, count]) => `
       <button type="button" class="integration-card" data-integration="${key}">
         <svg><use href="#${icon}"/></svg>
-        <b>${label}</b>
-        <small>${count} 个已发现项目</small>
+        <b>${escapeHtml(label)}</b>
+        <small>${escapeHtml(t("integration.itemsFound", { count }))}</small>
       </button>`).join("");
     $$("[data-integration]").forEach((button) => button.addEventListener("click", () => openIntegrationDetail(button.dataset.integration)));
   }
@@ -2162,22 +2225,22 @@
   }
 
   function updateAccountUI() {
-    const name = authState.signedIn ? authState.name : "登录 Grok";
-    const email = authState.email || (authState.signedIn ? `通过 ${authState.method || "Grok"} 登录` : "使用 Grok 账号继续");
+    const name = authState.signedIn ? authState.name : t("account.login");
+    const email = authState.email || (authState.signedIn ? t("account.signedInVia", { method: authState.method || "Grok" }) : t("account.continueWithGrok"));
     const avatarText = authState.signedIn ? initials(name) : "G";
     [$("#accountAvatar"), $("#accountPopoverAvatar"), $("#settingsAccountAvatar")].forEach((avatar) => { avatar.textContent = avatarText; });
     $("#accountAvatar").appendChild(document.createElement("i"));
     $("#accountAvatar").classList.toggle("is-online", runtimeState.connected);
     $("#runtimeTitle").textContent = name;
-    $("#runtimeMeta").textContent = runtimeState.connected ? `Grok runtime 在线${runtimeState.version ? ` · ${runtimeState.version}` : ""}` : "Grok runtime 未连接";
+    $("#runtimeMeta").textContent = runtimeState.connected ? `${t("account.runtimeConnected")}${runtimeState.version ? ` · ${runtimeState.version}` : ""}` : t("account.runtimeDisconnected");
     $("#accountPopoverName").textContent = name; $("#accountPopoverEmail").textContent = email;
     $("#accountRuntimeDot").classList.toggle("is-online", runtimeState.connected);
-    $("#accountRuntimeLabel").textContent = runtimeState.connected ? "Grok Runtime 在线" : "Grok Runtime 离线";
-    $("#accountVersionLabel").textContent = runtimeState.version || "等待 Runtime 连接";
-    $("#authMenuLabel").textContent = authState.signedIn ? "退出登录" : "登录 Grok";
+    $("#accountRuntimeLabel").textContent = runtimeState.connected ? t("account.runtimeOnline") : t("account.runtimeOffline");
+    $("#accountVersionLabel").textContent = runtimeState.version || t("account.waitingRuntime");
+    $("#authMenuLabel").textContent = authState.signedIn ? t("account.signOut") : t("account.login");
     $("#settingsAccountName").textContent = name; $("#settingsAccountEmail").textContent = email;
     $("#settingsAccountTeam").textContent = [authState.team, authState.role].filter(Boolean).join(" · ");
-    $("#settingsAuthButton").textContent = authState.signedIn ? "退出登录" : "登录 Grok";
+    $("#settingsAuthButton").textContent = authState.signedIn ? t("account.signOut") : t("account.login");
     $("#settingsRuntimeVersion").textContent = runtimeState.version || "—";
   }
 
@@ -2202,7 +2265,7 @@
           stopAuthPolling();
           $("#authProgress").hidden = true;
           await detectRuntime({ waitForModels: true });
-          toast("Grok 登录完成", info.email || info.name);
+          toast(t("account.loginComplete"), info.email || info.name);
         } else if (checks >= 400) stopAuthPolling();
       } finally { authPollBusy = false; }
     }, 1500);
@@ -2210,17 +2273,17 @@
 
   async function toggleAuth() {
     $("#accountPopover").hidden = true;
-    if (!api) { toast("账号预览", "Electron 中连接 Grok 账号"); return; }
+    if (!api) { toast(t("account.preview"), t("account.previewHint")); return; }
     if (authState.signedIn) {
       stopAuthPolling();
       const result = await api.logout();
       if (!result.ok) { toast("退出登录失败", result.error); return; }
       authState = result.info; updateAccountUI(); toast("已退出 Grok", "本地 Runtime 仍可使用第三方模型"); return;
     }
-    $("#authProgress").hidden = false; $("#authProgressText").textContent = "正在连接 auth.x.ai 并生成 Runtime OAuth 授权地址…";
+    $("#authProgress").hidden = false; $("#authProgressText").textContent = t("account.connectingAuth");
     const result = await api.login();
-    if (!result.ok) { $("#authProgressText").textContent = result.error; toast("登录启动失败", result.error); }
-    else { startAuthPolling(); toast("正在连接 Grok 账号", "Runtime OAuth 授权页即将打开"); }
+    if (!result.ok) { $("#authProgressText").textContent = result.error; toast(t("account.loginFailed"), result.error); }
+    else { startAuthPolling(); toast(t("account.connectingToast"), t("account.oauthOpening")); }
   }
 
   async function openSettings(page = "general") {
@@ -2259,21 +2322,21 @@
   }
 
   function toolCapabilityMeta(capability) {
-    if (capability === "native") return { label: "原生工具", className: "is-native" };
-    if (capability === "bridge") return { label: "兼容桥", className: "is-bridge" };
-    if (capability === "unsupported") return { label: "非 Agent", className: "is-unsupported" };
-    if (capability === "checking") return { label: "检测中", className: "is-checking" };
-    return { label: "未检测", className: "is-unknown" };
+    if (capability === "native") return { label: t("capability.native"), className: "is-native" };
+    if (capability === "bridge") return { label: t("capability.bridge"), className: "is-bridge" };
+    if (capability === "unsupported") return { label: t("capability.unsupported"), className: "is-unsupported" };
+    if (capability === "checking") return { label: t("capability.checking"), className: "is-checking" };
+    return { label: t("capability.unknown"), className: "is-unknown" };
   }
 
   function providerCapabilitySummary(provider) {
     const counts = { native: 0, bridge: 0, unsupported: 0, unknown: 0 };
     for (const model of provider.models || []) counts[model.toolCapability in counts ? model.toolCapability : "unknown"] += 1;
     const parts = [];
-    if (counts.native) parts.push(`${counts.native} 原生`);
-    if (counts.bridge) parts.push(`${counts.bridge} 桥接`);
-    if (counts.unknown) parts.push(`${counts.unknown} 未检测`);
-    if (counts.unsupported) parts.push(`${counts.unsupported} 非 Agent`);
+    if (counts.native) parts.push(t("capability.summary.native", { count: counts.native }));
+    if (counts.bridge) parts.push(t("capability.summary.bridge", { count: counts.bridge }));
+    if (counts.unknown) parts.push(t("capability.summary.unknown", { count: counts.unknown }));
+    if (counts.unsupported) parts.push(t("capability.summary.unsupported", { count: counts.unsupported }));
     return parts.join(" · ");
   }
 
@@ -2299,15 +2362,15 @@
   function renderSavedProviders() {
     const target = $("#savedProviders");
     if (!savedProviders.length) {
-      target.innerHTML = '<div class="context-empty"><span>还没有第三方模型服务</span></div>';
+      target.innerHTML = `<div class="context-empty"><span>${escapeHtml(t("settings.provider.empty"))}</span></div>`;
       return;
     }
     target.innerHTML = savedProviders.map((provider) => {
       const operation = providerOperations.get(provider.id);
       const detail = operation?.type === "probe"
-        ? `正在检测 ${operation.completed || 0}/${operation.total || provider.models.length}`
-        : operation?.type === "refresh" ? "正在刷新模型列表" : `${provider.models.length} 个模型 · ${providerCapabilitySummary(provider)}`;
-      return `<div class="saved-provider"><span class="saved-provider__protocol">${provider.protocol === "anthropic" ? "ANTH" : "OAI"}</span><span><b>${escapeHtml(provider.name)}</b><small>${escapeHtml(provider.baseUrl)} · ${escapeHtml(detail)}${provider.keyProtected ? " · 系统加密" : ""}</small></span><span class="saved-provider__actions"><button class="icon-button ${operation?.type === "probe" ? "is-busy" : ""}" data-probe-provider="${provider.id}" title="批量检测工具兼容性" ${operation ? "disabled" : ""}><svg><use href="#i-check"/></svg></button><button class="icon-button ${operation?.type === "refresh" ? "is-busy" : ""}" data-refresh-provider="${provider.id}" title="重新刷新模型列表" ${operation ? "disabled" : ""}><svg><use href="#i-refresh"/></svg></button><button class="icon-button" data-remove-provider="${provider.id}" title="移除" ${operation ? "disabled" : ""}><svg><use href="#i-trash"/></svg></button></span></div>`;
+        ? t("settings.provider.probing", { completed: operation.completed || 0, total: operation.total || provider.models.length })
+        : operation?.type === "refresh" ? t("settings.provider.refreshing") : t("settings.provider.modelCount", { count: provider.models.length, summary: providerCapabilitySummary(provider) });
+      return `<div class="saved-provider"><span class="saved-provider__protocol">${provider.protocol === "anthropic" ? "ANTH" : "OAI"}</span><span><b>${escapeHtml(provider.name)}</b><small>${escapeHtml(provider.baseUrl)} · ${escapeHtml(detail)}${provider.keyProtected ? ` · ${t("settings.provider.keyProtected")}` : ""}</small></span><span class="saved-provider__actions"><button class="icon-button ${operation?.type === "probe" ? "is-busy" : ""}" data-probe-provider="${provider.id}" title="${escapeHtml(t("settings.provider.probeAll"))}" ${operation ? "disabled" : ""}><svg><use href="#i-check"/></svg></button><button class="icon-button ${operation?.type === "refresh" ? "is-busy" : ""}" data-refresh-provider="${provider.id}" title="${escapeHtml(t("settings.provider.refreshList"))}" ${operation ? "disabled" : ""}><svg><use href="#i-refresh"/></svg></button><button class="icon-button" data-remove-provider="${provider.id}" title="${escapeHtml(t("settings.provider.remove"))}" ${operation ? "disabled" : ""}><svg><use href="#i-trash"/></svg></button></span></div>`;
     }).join("");
     $$('[data-probe-provider]').forEach((button) => button.addEventListener("click", () => batchProbeProvider(button.dataset.probeProvider)));
     $$('[data-refresh-provider]').forEach((button) => button.addEventListener("click", () => refreshProviderModels(button.dataset.refreshProvider)));
@@ -2316,26 +2379,26 @@
       savedProviders = api ? await api.removeProvider(button.dataset.removeProvider) : [];
       runtimeModels = runtimeModels.filter((item) => !removedModelIds.has(item.id));
       renderSavedProviders(); mergeProviderModels(); await detectRuntime({ waitForModels: true });
-      toast("模型服务已移除", "Grok 配置已同步更新");
+      toast(t("settings.provider.removed"), t("settings.provider.removedHint"));
     }));
   }
 
   async function batchProbeProvider(providerId) {
     const provider = savedProviders.find((item) => item.id === providerId);
     if (!provider || !api) return;
-    if (!window.confirm(`将检测 ${provider.models.length} 个模型的工具兼容性，过程中可能产生少量 API 费用。是否继续？`)) return;
+    if (!window.confirm(t("settings.provider.probeConfirm", { count: provider.models.length }))) return;
     providerOperations.set(providerId, { type: "probe", completed: 0, total: provider.models.length });
     renderSavedProviders();
     const result = await api.probeAllProviderModels(providerId);
     providerOperations.delete(providerId);
     if (!result.ok) {
       renderSavedProviders();
-      toast("批量检测失败", result.error);
+      toast(t("settings.provider.probeFailed"), result.error);
       return;
     }
     savedProviders = result.providers;
     renderSavedProviders(); mergeProviderModels(); await detectRuntime({ waitForModels: true });
-    toast("批量检测完成", `${result.completed}/${result.total} 个模型已更新工具兼容状态`);
+    toast(t("settings.provider.probeDone"), t("settings.provider.probeDoneHint", { completed: result.completed, total: result.total }));
   }
 
   async function refreshProviderModels(providerId) {
@@ -2347,12 +2410,16 @@
     providerOperations.delete(providerId);
     if (!result.ok) {
       renderSavedProviders();
-      toast("模型刷新失败", result.error);
+      toast(t("settings.provider.refreshFailed"), result.error);
       return;
     }
     savedProviders = result.providers;
     renderSavedProviders(); await detectRuntime({ waitForModels: true }); mergeProviderModels();
-    toast("模型列表已刷新", `共 ${result.stats.total} 个，新增 ${result.stats.added} 个，移除 ${result.stats.removed} 个`);
+    toast(t("settings.provider.refreshDone"), t("settings.provider.refreshDoneHint", {
+      total: result.stats.total,
+      added: result.stats.added,
+      removed: result.stats.removed
+    }));
   }
 
   function handleProviderEvent(event) {
@@ -2372,7 +2439,7 @@
     const key = $("#providerKey").value.trim();
     const status = $("#providerDetectStatus");
     status.className = "provider-detect-status";
-    status.textContent = "正在尝试 OpenAI 与 Anthropic 协议…";
+    status.textContent = t("settings.models.detecting");
     $("#discoverModelsButton").disabled = true;
     const result = api ? await api.discoverProviderModels({ baseUrl: url, apiKey: key }) : { ok: true, protocol: "openai", baseUrl: url, models: [{ id: "example-model", name: "Example Model" }] };
     $("#discoverModelsButton").disabled = false;
@@ -2384,7 +2451,10 @@
     }
     providerDiscovery = { ...result, apiKey: key, selected: new Set(result.models.map((model) => model.id)) };
     status.classList.add("is-success");
-    status.textContent = `已识别 ${result.protocol === "anthropic" ? "Anthropic Messages" : "OpenAI Chat Completions"} 协议，共 ${result.models.length} 个模型`;
+    status.textContent = t("settings.models.detectSuccess", {
+      protocol: result.protocol === "anthropic" ? "Anthropic Messages" : "OpenAI Chat Completions",
+      count: result.models.length
+    });
     renderDiscoveredModels();
   }
 
@@ -2394,7 +2464,7 @@
     target.hidden = false;
     target.innerHTML = providerDiscovery.models.map((model) => {
       const capability = toolCapabilityMeta(model.toolCapability);
-      return `<div class="discovered-model"><input type="checkbox" data-discovered-model="${escapeHtml(model.id)}" ${providerDiscovery.selected.has(model.id) ? "checked" : ""}/><span><b>${escapeHtml(model.name || model.id)}</b><small>${escapeHtml(model.id)}${model.owner ? ` · ${escapeHtml(model.owner)}` : ""}${model.toolCapabilityDetail ? ` · ${escapeHtml(model.toolCapabilityDetail)}` : ""}</small></span><em class="discovered-model__capability ${capability.className}">${capability.label}</em><button class="icon-button discovered-model__probe ${model.toolCapability === "checking" ? "is-busy" : ""}" data-probe-model="${escapeHtml(model.id)}" title="检测工具兼容性" ${model.toolCapability === "checking" || model.toolCapability === "unsupported" ? "disabled" : ""}><svg><use href="#i-refresh"/></svg></button></div>`;
+      return `<div class="discovered-model"><input type="checkbox" data-discovered-model="${escapeHtml(model.id)}" ${providerDiscovery.selected.has(model.id) ? "checked" : ""}/><span><b>${escapeHtml(model.name || model.id)}</b><small>${escapeHtml(model.id)}${model.owner ? ` · ${escapeHtml(model.owner)}` : ""}${model.toolCapabilityDetail ? ` · ${escapeHtml(model.toolCapabilityDetail)}` : ""}</small></span><em class="discovered-model__capability ${capability.className}">${capability.label}</em><button class="icon-button discovered-model__probe ${model.toolCapability === "checking" ? "is-busy" : ""}" data-probe-model="${escapeHtml(model.id)}" title="${escapeHtml(t("settings.provider.probeOne"))}" ${model.toolCapability === "checking" || model.toolCapability === "unsupported" ? "disabled" : ""}><svg><use href="#i-refresh"/></svg></button></div>`;
     }).join("");
     $$('[data-discovered-model]').forEach((input) => input.addEventListener("change", () => {
       input.checked ? providerDiscovery.selected.add(input.dataset.discoveredModel) : providerDiscovery.selected.delete(input.dataset.discoveredModel);
@@ -2408,7 +2478,7 @@
     const model = providerDiscovery?.models?.find((item) => item.id === modelId);
     if (!model || !api) return;
     model.toolCapability = "checking";
-    model.toolCapabilityDetail = "正在验证工具调用协议";
+    model.toolCapabilityDetail = t("settings.provider.probingProtocol");
     renderDiscoveredModels();
     const response = await api.probeProviderModel({
       baseUrl: providerDiscovery.baseUrl,
@@ -2420,17 +2490,17 @@
     if (!response.ok) {
       model.toolCapability = "unknown";
       model.toolCapabilityDetail = response.error;
-      toast("工具检测失败", response.error);
+      toast(t("settings.provider.probeOneFailed"), response.error);
     } else {
       Object.assign(model, response.result, { toolCapabilityCheckedAt: Date.now() });
-      toast("工具检测完成", `${model.name || model.id} · ${response.result.toolCapabilityDetail}`);
+      toast(t("settings.provider.probeOneDone"), `${model.name || model.id} · ${response.result.toolCapabilityDetail}`);
     }
     renderDiscoveredModels();
   }
 
   function updateProviderSelection() {
     const count = providerDiscovery?.selected.size || 0;
-    $("#providerSelectionCount").textContent = `已选择 ${count} 个模型`;
+    $("#providerSelectionCount").textContent = t("settings.provider.selected", { count });
     $("#saveProviderButton").disabled = count === 0;
   }
 
@@ -2443,15 +2513,15 @@
       protocol: providerDiscovery.protocol,
       models: selected
     }) : { ok: true, providers: [] };
-    if (!result.ok) { toast("保存失败", result.error); return; }
+    if (!result.ok) { toast(t("settings.saveFailed"), result.error); return; }
     savedProviders = result.providers;
     providerDiscovery = null;
     $("#providerUrl").value = ""; $("#providerKey").value = "";
     $("#providerDetectStatus").className = "provider-detect-status";
-    $("#providerDetectStatus").textContent = "填写连接信息后发现模型";
+    $("#providerDetectStatus").textContent = t("settings.models.detectHint");
     $("#discoveredModels").hidden = true; $("#providerSaveRow").hidden = true;
     renderSavedProviders(); await detectRuntime({ waitForModels: true }); mergeProviderModels();
-    toast("第三方模型已保存", `${selected.length} 个模型已加入模型选择器`);
+    toast(t("settings.provider.savedTitle"), t("settings.provider.saved", { count: selected.length }));
   }
 
   function closePicker() {
@@ -2763,6 +2833,12 @@
     $("#paletteInput").addEventListener("input", (event) => renderPalette(event.target.value));
     $("#themeButton").addEventListener("click", () => { state.theme = resolvedTheme() === "dark" ? "light" : "dark"; saveState(); updateLayout(); });
     $("#themeSelect").addEventListener("change", (event) => { state.theme = event.target.value; saveState(); updateLayout(); });
+    $("#localeSelect")?.addEventListener("change", (event) => {
+      state.locale = event.target.value === "en" ? "en" : "zh";
+      saveState();
+      applyLocale();
+      toast(t("toast.localeSwitched"), "");
+    });
     $("#refreshRuntime").addEventListener("click", refreshRuntimeDetection);
     $("#runtimeCard").addEventListener("click", (event) => { event.stopPropagation(); $("#accountPopover").hidden = !$("#accountPopover").hidden; });
     $("#profileMenuButton").addEventListener("click", () => openSettings("account"));
@@ -2782,9 +2858,9 @@
     $("#integrationDetailBackdrop").addEventListener("click", (event) => { if (event.target === $("#integrationDetailBackdrop")) closeIntegrationDetail(); });
     $("#saveRawConfig").addEventListener("click", async () => {
       const result = api ? await api.saveRawConfig($("#rawConfigEditor").value) : { ok: true, raw: $("#rawConfigEditor").value, values: nativeConfig.values };
-      if (!result.ok) { toast("配置保存失败", result.error); return; }
+      if (!result.ok) { toast(t("settings.saveFailed"), result.error); return; }
       nativeConfig = result; renderNativeSettings(); renderIntegrationSummary();
-      toast("原生配置已保存", "TUI 与桌面端将读取同一份 config.toml");
+      toast(t("settings.configSaved"), t("settings.configSavedHint"));
       await detectRuntime({ waitForModels: true });
     });
     $("#discoverModelsButton").addEventListener("click", discoverProviderModels);
@@ -2794,8 +2870,8 @@
       openPicker(event.currentTarget, {
         scrollable: true,
         selected: state.model,
-        items: runtimeModels.map((item, index) => ({ ...item, description: item.id === "auto" ? "跟随 Grok Runtime 的默认模型" : (item.description || "固定使用这个模型处理后续任务"), badge: index === 0 ? "推荐" : (item.badge || "") })),
-        onSelect: (item) => { state.model = item.id; state.modelLabel = item.label; saveState(); updateWorkspace(); toast("模型已切换", item.label); }
+        items: runtimeModels.map((item, index) => ({ ...item, description: item.id === "auto" ? t("model.autoDesc") : (item.description || t("model.fixedDesc")), badge: index === 0 ? t("effort.recommended") : (item.badge || "") })),
+        onSelect: (item) => { state.model = item.id; state.modelLabel = item.label; saveState(); updateWorkspace(); toast(t("toast.modelSwitched"), item.label); }
       });
     });
     $("#effortButton").addEventListener("click", (event) => {
@@ -2803,14 +2879,14 @@
       openPicker(event.currentTarget, {
         selected: state.effort,
         items: [
-          { id: "low", label: "低思考" },
-          { id: "medium", label: "中思考" },
-          { id: "high", label: "高思考" }
+          { id: "low", label: effortLabel("low") },
+          { id: "medium", label: effortLabel("medium") },
+          { id: "high", label: effortLabel("high") }
         ],
-        onSelect: (item) => { state.effort = item.id; state.effortLabel = item.label; saveState(); updateWorkspace(); toast("思考档位已切换", item.label); }
+        onSelect: (item) => { state.effort = item.id; state.effortLabel = item.label; saveState(); updateWorkspace(); toast(t("toast.effortSwitched"), item.label); }
       });
     });
-    $("#clearThreadsButton").addEventListener("click", () => toast("任务已整理", "历史记录保留在本机"));
+    $("#clearThreadsButton").addEventListener("click", () => toast(t("toast.threadsCleared"), t("toast.threadsClearedHint")));
     $("#conversation").addEventListener("scroll", () => { const el = $("#conversation"); $("#scrollBottom").classList.toggle("is-visible", el.scrollHeight - el.scrollTop - el.clientHeight > 160); });
     $("#scrollBottom").addEventListener("click", scrollToBottom);
     $$('[data-window]').forEach((button) => button.addEventListener("click", () => { if (!api) return; const action = button.dataset.window; if (action === "min") api.minimize(); else if (action === "max") api.maximize(); else api.close(); }));
@@ -2857,12 +2933,15 @@
     if (event.kind === "output") text.textContent = `${text.textContent}\n${event.text}`.trim().slice(-6000);
     else text.textContent = event.text;
     text.scrollTop = text.scrollHeight;
-    if (event.kind === "browser") toast("Grok 登录页面已打开", "请在浏览器完成账号登录");
-    if (event.kind === "oauth-browser") toast("Runtime OAuth 授权页已打开", "授权完成后账号会自动同步到应用");
-    if (event.kind === "complete") setTimeout(async () => { stopAuthPolling(); await refreshAuthInfo(); await detectRuntime({ waitForModels: true }); progress.hidden = true; toast("Grok 登录完成", authState.email || authState.name); }, 700);
-    if (event.kind === "error") { stopAuthPolling(); toast("Grok 登录状态", event.text); }
+    if (event.kind === "browser") toast(t("account.loginPageOpened"), t("account.loginPageHint"));
+    if (event.kind === "oauth-browser") toast(t("account.oauthOpened"), t("account.oauthOpenedHint"));
+    if (event.kind === "complete") setTimeout(async () => { stopAuthPolling(); await refreshAuthInfo(); await detectRuntime({ waitForModels: true }); progress.hidden = true; toast(t("account.loginComplete"), authState.email || authState.name); }, 700);
+    if (event.kind === "error") { stopAuthPolling(); toast(t("account.loginStatus"), event.text); }
   });
   renderDockTabPicker();
+  window.GrokI18n?.setLocale(state.locale);
+  window.GrokI18n?.applyDom();
+  syncLocalizedDefaults();
   (async () => {
     await resolveWorkspaceState();
     renderAll();

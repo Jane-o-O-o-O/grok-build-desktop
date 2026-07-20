@@ -50,20 +50,20 @@
             <span class="brand__word">GROK BUILD</span>
           </button>
         </div>
-        <nav class="titlebar__actions" aria-label="窗口操作">
-          <button class="icon-button title-action" id="themeButton" title="切换主题"><svg><use href="#i-sun"/></svg></button>
-          <button class="icon-button title-action" id="settingsButton" title="设置"><svg><use href="#i-settings"/></svg></button>
+        <nav class="titlebar__actions" aria-label="Window controls" data-i18n-aria="titlebar.windowActions">
+          <button class="icon-button title-action" id="themeButton" data-i18n-title="titlebar.theme" title="Toggle theme"><svg><use href="#i-sun"/></svg></button>
+          <button class="icon-button title-action" id="settingsButton" data-i18n-title="titlebar.settings" title="Settings"><svg><use href="#i-settings"/></svg></button>
           <span class="window-spacer"></span>
-          <button class="window-button" data-window="min" aria-label="最小化"><span></span></button>
-          <button class="window-button window-button--max" data-window="max" aria-label="最大化"><span></span></button>
-          <button class="window-button window-button--close" data-window="close" aria-label="关闭"><span></span></button>
+          <button class="window-button" data-window="min" aria-label="Minimize" data-i18n-aria="titlebar.minimize"><span></span></button>
+          <button class="window-button window-button--max" data-window="max" aria-label="Maximize" data-i18n-aria="titlebar.maximize"><span></span></button>
+          <button class="window-button window-button--close" data-window="close" aria-label="Close" data-i18n-aria="titlebar.close"><span></span></button>
         </nav>
       </header>
 
       <aside class="sidebar" id="sidebar">
         <div class="sidebar__top">
-          <button class="new-thread-button" id="newThreadButton"><svg><use href="#i-plus"/></svg><span>新建任务</span></button>
-          <button class="icon-button" id="searchButton" title="搜索会话"><svg><use href="#i-search"/></svg></button>
+          <button class="new-thread-button" id="newThreadButton"><svg><use href="#i-plus"/></svg><span data-i18n="sidebar.newThread">New task</span></button>
+          <button class="icon-button" id="searchButton" data-i18n-title="sidebar.searchThreads" title="Search sessions"><svg><use href="#i-search"/></svg></button>
         </div>
 
         <button class="workspace-card" id="workspaceButton">
@@ -73,23 +73,23 @@
         </button>
 
         <div class="sidebar-section sidebar-section--grow">
-          <div class="section-label"><span>任务</span><button class="text-button" id="clearThreadsButton">整理</button></div>
+          <div class="section-label"><span data-i18n="sidebar.threads">Tasks</span><button class="text-button" id="clearThreadsButton" data-i18n="sidebar.clearThreads">Tidy up</button></div>
           <div class="thread-list" id="threadList"></div>
         </div>
 
         <div class="sidebar__footer">
           <div class="account-popover" id="accountPopover" hidden>
-            <header><span class="account-avatar account-avatar--large" id="accountPopoverAvatar">G</span><span><b id="accountPopoverName">登录 Grok</b><small id="accountPopoverEmail">使用 Grok 账号同步身份</small></span></header>
-            <div class="account-status-row"><span class="status-dot" id="accountRuntimeDot"></span><span><b id="accountRuntimeLabel">Grok Runtime</b><small id="accountVersionLabel">正在检测版本</small></span></div>
+            <header><span class="account-avatar account-avatar--large" id="accountPopoverAvatar">G</span><span><b id="accountPopoverName" data-i18n="account.login">Sign in to Grok</b><small id="accountPopoverEmail" data-i18n="account.syncHint">Sync identity with your Grok account</small></span></header>
+            <div class="account-status-row"><span class="status-dot" id="accountRuntimeDot"></span><span><b id="accountRuntimeLabel" data-i18n="account.runtime">Grok Runtime</b><small id="accountVersionLabel" data-i18n="account.detectingVersion">Detecting version…</small></span></div>
             <nav>
-              <button id="profileMenuButton"><svg><use href="#i-user"/></svg><span>个人资料</span><svg class="menu-chevron"><use href="#i-chevron"/></svg></button>
-              <button id="settingsMenuButton"><svg><use href="#i-settings"/></svg><span>设置</span></button>
-              <button id="authMenuButton"><svg><use href="#i-logout"/></svg><span id="authMenuLabel">登录 Grok</span></button>
+              <button id="profileMenuButton"><svg><use href="#i-user"/></svg><span data-i18n="account.profile">Profile</span><svg class="menu-chevron"><use href="#i-chevron"/></svg></button>
+              <button id="settingsMenuButton"><svg><use href="#i-settings"/></svg><span data-i18n="account.settings">Settings</span></button>
+              <button id="authMenuButton"><svg><use href="#i-logout"/></svg><span id="authMenuLabel" data-i18n="account.login">Sign in to Grok</span></button>
             </nav>
           </div>
           <button class="usage-card account-card" id="runtimeCard">
             <span class="account-avatar" id="accountAvatar">G<i></i></span>
-            <span><b id="runtimeTitle">登录 Grok</b><small id="runtimeMeta">正在连接 Grok runtime…</small></span>
+            <span><b id="runtimeTitle" data-i18n="account.login">Sign in to Grok</b><small id="runtimeMeta" data-i18n="account.connecting">Connecting to Grok runtime…</small></span>
             <svg><use href="#i-chevron"/></svg>
           </button>
         </div>
@@ -112,7 +112,7 @@
             </section>
           </div>
           <div class="toolbar-group toolbar-group--right">
-            <span class="session-state" id="sessionState"><i></i>准备就绪</span>
+            <span class="session-state" id="sessionState"><i></i><span id="sessionStateLabel">Ready</span></span>
             <button class="icon-button" id="inspectorToggle" title="右侧工作台"><svg><use href="#i-panel"/></svg></button>
           </div>
         </div>
@@ -125,7 +125,7 @@
         <section class="composer-dock">
           <div class="composer" id="composer">
             <div class="attachment-list" id="attachmentList"></div>
-            <textarea id="promptInput" rows="1" placeholder="让 Grok 构建、解释或修复任何内容…" aria-label="消息"></textarea>
+            <textarea id="promptInput" rows="1" data-i18n-placeholder="composer.placeholder" placeholder="Ask Grok to build, explain, or fix anything…" data-i18n-aria="composer.message" aria-label="Message"></textarea>
             <div class="composer__bottom">
               <div class="composer__tools">
                 <button class="composer-tool" id="attachButton" title="添加文件"><svg><use href="#i-paperclip"/></svg></button>
@@ -191,78 +191,81 @@
     </div>
 
     <div class="modal-backdrop settings-backdrop" id="settingsBackdrop" hidden>
-      <section class="settings-window" id="settingsWindow" role="dialog" aria-modal="true" aria-label="Grok 设置">
+      <section class="settings-window" id="settingsWindow" role="dialog" aria-modal="true" data-i18n-aria="settings.title">
         <header class="settings-window__header">
-          <div><small>GROK BUILD</small><h2>设置</h2></div>
-          <label class="settings-search"><svg><use href="#i-search"/></svg><input id="settingsSearch" placeholder="搜索设置…"/></label>
+          <div><small>GROK BUILD</small><h2 data-i18n="settings.title">Settings</h2></div>
+          <label class="settings-search"><svg><use href="#i-search"/></svg><input id="settingsSearch" data-i18n-placeholder="settings.search" placeholder="Search settings…"/></label>
           <button class="icon-button" data-close-modal><svg><use href="#i-x"/></svg></button>
         </header>
         <div class="settings-layout">
           <aside class="settings-nav" id="settingsNav">
-            <div class="settings-nav__group">个人</div>
-            <button data-settings-page="account"><svg><use href="#i-user"/></svg>账号</button>
-            <button class="is-active" data-settings-page="general"><svg><use href="#i-sliders"/></svg>常规</button>
-            <button data-settings-page="models"><svg><use href="#i-sliders"/></svg>模型</button>
-            <button data-settings-page="appearance"><svg><use href="#i-sun"/></svg>外观</button>
-            <button data-settings-page="input"><svg><use href="#i-terminal"/></svg>输入与交互</button>
-            <div class="settings-nav__group">Grok Runtime</div>
-            <button data-settings-page="agent"><svg><use href="#i-shield"/></svg>Agent 与权限</button>
-            <button data-settings-page="tools"><svg><use href="#i-terminal"/></svg>工具</button>
-            <button data-settings-page="memory"><svg><use href="#i-memory"/></svg>记忆</button>
-            <button data-settings-page="git"><svg><use href="#i-git"/></svg>Git 与 Worktree</button>
-            <button data-settings-page="integrations"><svg><use href="#i-tasks"/></svg>集成</button>
-            <div class="settings-nav__group">系统</div>
-            <button data-settings-page="privacy"><svg><use href="#i-shield"/></svg>数据与隐私</button>
-            <button data-settings-page="advanced"><svg><use href="#i-file"/></svg>配置文件</button>
+            <div class="settings-nav__group" data-i18n="settings.group.personal">Personal</div>
+            <button data-settings-page="account"><svg><use href="#i-user"/></svg><span data-i18n="settings.nav.account">Account</span></button>
+            <button class="is-active" data-settings-page="general"><svg><use href="#i-sliders"/></svg><span data-i18n="settings.nav.general">General</span></button>
+            <button data-settings-page="models"><svg><use href="#i-sliders"/></svg><span data-i18n="settings.nav.models">Models</span></button>
+            <button data-settings-page="appearance"><svg><use href="#i-sun"/></svg><span data-i18n="settings.nav.appearance">Appearance</span></button>
+            <button data-settings-page="input"><svg><use href="#i-terminal"/></svg><span data-i18n="settings.nav.input">Input & interaction</span></button>
+            <div class="settings-nav__group" data-i18n="settings.group.runtime">Grok Runtime</div>
+            <button data-settings-page="agent"><svg><use href="#i-shield"/></svg><span data-i18n="settings.nav.agent">Agent & permissions</span></button>
+            <button data-settings-page="tools"><svg><use href="#i-terminal"/></svg><span data-i18n="settings.nav.tools">Tools</span></button>
+            <button data-settings-page="memory"><svg><use href="#i-memory"/></svg><span data-i18n="settings.nav.memory">Memory</span></button>
+            <button data-settings-page="git"><svg><use href="#i-git"/></svg><span data-i18n="settings.nav.git">Git & Worktree</span></button>
+            <button data-settings-page="integrations"><svg><use href="#i-tasks"/></svg><span data-i18n="settings.nav.integrations">Integrations</span></button>
+            <div class="settings-nav__group" data-i18n="settings.group.system">System</div>
+            <button data-settings-page="privacy"><svg><use href="#i-shield"/></svg><span data-i18n="settings.nav.privacy">Privacy</span></button>
+            <button data-settings-page="advanced"><svg><use href="#i-file"/></svg><span data-i18n="settings.nav.advanced">Config file</span></button>
           </aside>
 
           <main class="settings-content" id="settingsContent">
             <section class="settings-panel" data-settings-panel="search" id="settingsSearchResults" hidden></section>
 
             <section class="settings-panel" data-settings-panel="account" hidden>
-              <div class="settings-panel__heading"><h3>账号</h3><p>管理 Grok 登录身份、团队信息和运行时连接。</p></div>
-              <div class="profile-hero"><span class="account-avatar account-avatar--hero" id="settingsAccountAvatar">G</span><span><h4 id="settingsAccountName">登录 Grok</h4><p id="settingsAccountEmail">登录后在桌面端使用 Grok 账号信息</p><small id="settingsAccountTeam"></small></span><button class="primary-button" id="settingsAuthButton">登录 Grok</button></div>
-              <div class="settings-card"><div class="settings-row"><span><b>Grok Runtime</b><small id="settingsRuntimePath">自动检测</small></span><button class="secondary-button" id="refreshRuntime"><svg><use href="#i-refresh"/></svg>重新检测</button></div><div class="settings-row"><span><b>版本</b><small>桌面端当前连接的原生 TUI Runtime</small></span><code id="settingsRuntimeVersion">—</code></div></div>
-              <div class="auth-progress" id="authProgress" hidden><span class="status-dot is-busy"></span><pre id="authProgressText">正在启动登录…</pre></div>
+              <div class="settings-panel__heading"><h3 data-i18n="settings.nav.account">Account</h3><p data-i18n="settings.account.desc">Manage Grok sign-in, team info, and runtime connection.</p></div>
+              <div class="profile-hero"><span class="account-avatar account-avatar--hero" id="settingsAccountAvatar">G</span><span><h4 id="settingsAccountName">Sign in to Grok</h4><p id="settingsAccountEmail" data-i18n="settings.account.loginAfter">Sign in to use your Grok account in the desktop app</p><small id="settingsAccountTeam"></small></span><button class="primary-button" id="settingsAuthButton">Sign in to Grok</button></div>
+              <div class="settings-card"><div class="settings-row"><span><b data-i18n="account.runtime">Grok Runtime</b><small id="settingsRuntimePath" data-i18n="settings.account.autoDetect">Auto-detect</small></span><button class="secondary-button" id="refreshRuntime"><svg><use href="#i-refresh"/></svg><span data-i18n="settings.account.redetect">Re-detect</span></button></div><div class="settings-row"><span><b data-i18n="settings.account.version">Version</b><small data-i18n="settings.account.versionDesc">Native TUI runtime connected to the desktop app</small></span><code id="settingsRuntimeVersion">—</code></div></div>
+              <div class="auth-progress" id="authProgress" hidden><span class="status-dot is-busy"></span><pre id="authProgressText" data-i18n="account.startingLogin">Starting sign-in…</pre></div>
             </section>
 
             <section class="settings-panel is-active" data-settings-panel="general">
-              <div class="settings-panel__heading"><h3>常规</h3><p>桌面行为和原生 Grok 的会话默认值。</p></div>
-              <div class="settings-card"><div class="settings-row"><span><b>桌面界面主题</b><small>仅控制 Grok Build 桌面外观</small></span><select id="themeSelect"><option value="system">跟随系统</option><option value="dark">深色</option><option value="light">浅色</option></select></div></div>
+              <div class="settings-panel__heading"><h3 data-i18n="settings.general.title">General</h3><p data-i18n="settings.general.desc">Desktop behavior and native Grok session defaults.</p></div>
+              <div class="settings-card">
+                <div class="settings-row"><span><b data-i18n="settings.general.theme">Desktop theme</b><small data-i18n="settings.general.themeDesc">Controls Grok Build desktop appearance only</small></span><select id="themeSelect"><option value="system" data-i18n-option="settings.theme.system">System</option><option value="dark" data-i18n-option="settings.theme.dark">Dark</option><option value="light" data-i18n-option="settings.theme.light">Light</option></select></div>
+                <div class="settings-row"><span><b data-i18n="settings.general.locale">Interface language</b><small data-i18n="settings.general.localeDesc">Switch desktop UI language</small></span><select id="localeSelect"><option value="zh" data-i18n-option="lang.name">中文</option><option value="en">English</option></select></div>
+              </div>
               <div id="nativeGeneralSettings"></div>
             </section>
 
             <section class="settings-panel" data-settings-panel="models" hidden>
-              <div class="settings-panel__heading"><h3>模型</h3><p>设置原生默认模型，并发现 OpenAI 或 Anthropic 兼容服务。</p></div>
+              <div class="settings-panel__heading"><h3 data-i18n="settings.models.title">Models</h3><p data-i18n="settings.models.desc">Set native defaults and discover OpenAI or Anthropic-compatible providers.</p></div>
               <div id="nativeModelSettings"></div>
-              <div class="settings-section-label"><span>第三方模型</span><small>自动识别协议并检测 Grok CLI 工具兼容性</small></div>
-              <div class="provider-form"><label><span>API URL</span><input id="providerUrl" type="url" placeholder="https://api.example.com/v1" spellcheck="false"/></label><label><span>API 密钥</span><input id="providerKey" type="password" placeholder="输入密钥，仅保存在本机" autocomplete="new-password"/></label><div class="provider-form__actions"><span class="provider-detect-status" id="providerDetectStatus">填写连接信息后发现模型</span><button class="secondary-button" id="discoverModelsButton"><svg><use href="#i-search"/></svg>发现模型</button></div></div>
-              <div class="discovered-models" id="discoveredModels" hidden></div><div class="provider-save-row" id="providerSaveRow" hidden><span id="providerSelectionCount">已选择 0 个模型</span><button class="primary-button" id="saveProviderButton">保存所选模型</button></div><div class="saved-providers" id="savedProviders"></div>
+              <div class="settings-section-label"><span data-i18n="settings.models.thirdParty">Third-party models</span><small data-i18n="settings.models.thirdPartyDesc">Auto-detect protocol and Grok CLI tool compatibility</small></div>
+              <div class="provider-form"><label><span>API URL</span><input id="providerUrl" type="url" placeholder="https://api.example.com/v1" spellcheck="false"/></label><label><span data-i18n="settings.models.apiKey">API key</span><input id="providerKey" type="password" data-i18n-placeholder="settings.models.apiKeyPlaceholder" placeholder="Stored locally on this machine" autocomplete="new-password"/></label><div class="provider-form__actions"><span class="provider-detect-status" id="providerDetectStatus" data-i18n="settings.models.detectHint">Fill in connection details to discover models</span><button class="secondary-button" id="discoverModelsButton"><svg><use href="#i-search"/></svg><span data-i18n="settings.models.discover">Discover models</span></button></div></div>
+              <div class="discovered-models" id="discoveredModels" hidden></div><div class="provider-save-row" id="providerSaveRow" hidden><span id="providerSelectionCount">0 models selected</span><button class="primary-button" id="saveProviderButton" data-i18n="settings.models.saveSelected">Save selected models</button></div><div class="saved-providers" id="savedProviders"></div>
             </section>
 
-            <section class="settings-panel" data-settings-panel="appearance" hidden><div class="settings-panel__heading"><h3>外观</h3><p>直接对应原生 TUI 的主题、思考块、工具分组和显示密度。</p></div><div id="nativeAppearanceSettings"></div></section>
-            <section class="settings-panel" data-settings-panel="input" hidden><div class="settings-panel__heading"><h3>输入与交互</h3><p>编辑模式、语音输入、鼠标滚动和文本选择。</p></div><div id="nativeInputSettings"></div></section>
-            <section class="settings-panel" data-settings-panel="agent" hidden><div class="settings-panel__heading"><h3>Agent 与权限</h3><p>审批策略、子 Agent、问题等待和压缩行为。</p></div><div id="nativeAgentSettings"></div></section>
-            <section class="settings-panel" data-settings-panel="tools" hidden><div class="settings-panel__heading"><h3>工具</h3><p>Shell、Gitignore、LSP 和代码索引设置。</p></div><div id="nativeToolSettings"></div></section>
-            <section class="settings-panel" data-settings-panel="memory" hidden><div class="settings-panel__heading"><h3>记忆</h3><p>管理跨会话记忆、自动保存、监听和检索阈值。</p></div><div id="nativeMemorySettings"></div></section>
-            <section class="settings-panel" data-settings-panel="git" hidden><div class="settings-panel__heading"><h3>Git 与 Worktree</h3><p>设置新会话、分叉会话和变更跟踪策略。</p></div><div id="nativeGitSettings"></div></section>
+            <section class="settings-panel" data-settings-panel="appearance" hidden><div class="settings-panel__heading"><h3 data-i18n="settings.appearance.title">Appearance</h3><p data-i18n="settings.appearance.desc">Native TUI theme, thinking blocks, tool grouping, and density.</p></div><div id="nativeAppearanceSettings"></div></section>
+            <section class="settings-panel" data-settings-panel="input" hidden><div class="settings-panel__heading"><h3 data-i18n="settings.input.title">Input & interaction</h3><p data-i18n="settings.input.desc">Editing mode, voice input, scrolling, and text selection.</p></div><div id="nativeInputSettings"></div></section>
+            <section class="settings-panel" data-settings-panel="agent" hidden><div class="settings-panel__heading"><h3 data-i18n="settings.agent.title">Agent & permissions</h3><p data-i18n="settings.agent.desc">Approval policy, sub-agents, question wait, and compaction.</p></div><div id="nativeAgentSettings"></div></section>
+            <section class="settings-panel" data-settings-panel="tools" hidden><div class="settings-panel__heading"><h3 data-i18n="settings.tools.title">Tools</h3><p data-i18n="settings.tools.desc">Shell, gitignore, LSP, and code index settings.</p></div><div id="nativeToolSettings"></div></section>
+            <section class="settings-panel" data-settings-panel="memory" hidden><div class="settings-panel__heading"><h3 data-i18n="settings.memory.title">Memory</h3><p data-i18n="settings.memory.desc">Cross-session memory, autosave, watch, and retrieval thresholds.</p></div><div id="nativeMemorySettings"></div></section>
+            <section class="settings-panel" data-settings-panel="git" hidden><div class="settings-panel__heading"><h3 data-i18n="settings.git.title">Git & Worktree</h3><p data-i18n="settings.git.desc">New session, fork session, and change-tracking policies.</p></div><div id="nativeGitSettings"></div></section>
 
             <section class="settings-panel" data-settings-panel="integrations" hidden>
-              <div class="settings-panel__heading"><h3>集成</h3><p>原生 TUI 会从全局及项目 `.grok` 目录加载扩展能力。</p></div>
+              <div class="settings-panel__heading"><h3 data-i18n="settings.integrations.title">Integrations</h3><p data-i18n="settings.integrations.desc">Native TUI loads extensions from global and project `.grok` directories.</p></div>
               <div class="integration-grid" id="integrationGrid"></div>
-              <div class="settings-card"><div class="settings-row"><span><b>管理集成配置</b><small>MCP、插件和额外目录保存在原生 config.toml</small></span><button class="secondary-button" id="integrationOpenConfig"><svg><use href="#i-external"/></svg>打开配置</button></div></div>
+              <div class="settings-card"><div class="settings-row"><span><b data-i18n="settings.integrations.manage">Manage integrations</b><small data-i18n="settings.integrations.manageDesc">MCP, plugins, and extra directories live in native config.toml</small></span><button class="secondary-button" id="integrationOpenConfig"><svg><use href="#i-external"/></svg><span data-i18n="settings.integrations.openConfig">Open config</span></button></div></div>
             </section>
 
-            <section class="settings-panel" data-settings-panel="privacy" hidden><div class="settings-panel__heading"><h3>数据与隐私</h3><p>控制匿名遥测、反馈功能和本地数据行为。</p></div><div id="nativePrivacySettings"></div></section>
+            <section class="settings-panel" data-settings-panel="privacy" hidden><div class="settings-panel__heading"><h3 data-i18n="settings.privacy.title">Privacy</h3><p data-i18n="settings.privacy.desc">Anonymous telemetry, feedback, and local data behavior.</p></div><div id="nativePrivacySettings"></div></section>
             <section class="settings-panel" data-settings-panel="advanced" hidden>
-              <div class="settings-panel__heading"><h3>原生配置文件</h3><p>这里编辑的内容就是原生 TUI 使用的 <code>~/.grok/config.toml</code>。</p></div>
-              <div class="raw-config-toolbar"><code id="nativeConfigPath">~/.grok/config.toml</code><span></span><button class="secondary-button" id="reloadRawConfig"><svg><use href="#i-refresh"/></svg>重新加载</button><button class="secondary-button" id="revealRawConfig"><svg><use href="#i-folder"/></svg>显示文件</button></div>
-              <textarea class="raw-config-editor" id="rawConfigEditor" spellcheck="false" aria-label="config.toml 原始内容"></textarea>
-              <div class="raw-config-save"><small>保存前会在同目录生成 <code>config.toml.desktop-backup</code></small><button class="primary-button" id="saveRawConfig">保存配置文件</button></div>
+              <div class="settings-panel__heading"><h3 data-i18n="settings.advanced.title">Native config file</h3><p data-i18n="settings.advanced.desc">Edits here apply to the native TUI ~/.grok/config.toml.</p></div>
+              <div class="raw-config-toolbar"><code id="nativeConfigPath">~/.grok/config.toml</code><span></span><button class="secondary-button" id="reloadRawConfig"><svg><use href="#i-refresh"/></svg><span data-i18n="settings.advanced.reload">Reload</span></button><button class="secondary-button" id="revealRawConfig"><svg><use href="#i-folder"/></svg><span data-i18n="settings.advanced.reveal">Reveal file</span></button></div>
+              <textarea class="raw-config-editor" id="rawConfigEditor" spellcheck="false" data-i18n-aria="settings.advanced.rawLabel" aria-label="Raw config.toml"></textarea>
+              <div class="raw-config-save"><small data-i18n="settings.advanced.backupHint">A config.toml.desktop-backup copy is created before saving</small><button class="primary-button" id="saveRawConfig" data-i18n="settings.advanced.save">Save config</button></div>
             </section>
           </main>
         </div>
-        <footer class="settings-window__footer"><span></span><button class="primary-button" data-close-modal>完成</button></footer>
+        <footer class="settings-window__footer"><span></span><button class="primary-button" data-close-modal data-i18n="settings.done">Done</button></footer>
       </section>
     </div>
 
@@ -271,22 +274,24 @@
         <header>
           <div>
             <small id="integrationDetailSource">INTEGRATION</small>
-            <h2 id="integrationDetailTitle">集成详情</h2>
+            <h2 id="integrationDetailTitle" data-i18n="integration.detailTitle">Integration details</h2>
           </div>
-          <button class="icon-button" id="integrationDetailClose" aria-label="关闭"><svg><use href="#i-x"/></svg></button>
+          <button class="icon-button" id="integrationDetailClose" data-i18n-aria="integration.close" aria-label="Close"><svg><use href="#i-x"/></svg></button>
         </header>
         <div class="integration-detail-list" id="integrationDetailList"></div>
         <footer>
           <code id="integrationDetailPath"></code>
           <div class="integration-detail-actions">
-            <button class="secondary-button" id="integrationDetailReveal"><svg><use href="#i-folder"/></svg>显示位置</button>
-            <button class="primary-button" id="integrationDetailOpen">打开配置</button>
+            <button class="secondary-button" id="integrationDetailReveal"><svg><use href="#i-folder"/></svg><span data-i18n="integration.reveal">Reveal location</span></button>
+            <button class="primary-button" id="integrationDetailOpen" data-i18n="integration.openConfig">Open config</button>
           </div>
         </footer>
       </section>
     </div>
 
     <div class="toast-stack" id="toastStack"></div>
+    <script src="i18n.js"></script>
+    <script src="locales-native.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

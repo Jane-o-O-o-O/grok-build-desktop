@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, "..");
 const required = [
   "main.cjs", "preload.cjs", "package.json", "renderer/index.html",
   "provider-config.cjs", "provider-bridge.cjs", "native-config.cjs", "account-info.cjs", "git-workspace.cjs", "cli-runtime.cjs", "scripts/test-providers.cjs", "scripts/test-provider-bridge.cjs", "scripts/test-native-config.cjs", "scripts/test-account-info.cjs", "scripts/test-git-workspace.cjs", "scripts/test-cli-runtime.cjs",
-  "renderer/tokens.css", "renderer/app.css", "renderer/app.js",
+  "renderer/tokens.css", "renderer/app.css", "renderer/i18n.js", "renderer/locales-native.js", "renderer/app.js",
   "renderer/assets/GrokSans-Regular.woff2", "renderer/assets/GrokSans-Medium.woff2",
   "renderer/assets/grok-mark.png", "build/icon.png"
 ];
@@ -15,7 +15,7 @@ for (const file of required) {
   if (!fs.existsSync(target) || fs.statSync(target).size === 0) throw new Error(`Missing asset: ${file}`);
 }
 
-for (const file of ["main.cjs", "preload.cjs", "provider-config.cjs", "provider-bridge.cjs", "native-config.cjs", "account-info.cjs", "git-workspace.cjs", "cli-runtime.cjs", "renderer/app.js", "scripts/serve.cjs"]) {
+for (const file of ["main.cjs", "preload.cjs", "provider-config.cjs", "provider-bridge.cjs", "native-config.cjs", "account-info.cjs", "git-workspace.cjs", "cli-runtime.cjs", "renderer/i18n.js", "renderer/locales-native.js", "renderer/app.js", "scripts/serve.cjs"]) {
   new vm.Script(fs.readFileSync(path.join(root, file), "utf8"), { filename: file });
 }
 
@@ -26,7 +26,7 @@ const backend = fs.readFileSync(path.join(root, "main.cjs"), "utf8") + fs.readFi
 for (const ref of [...html.matchAll(/(?:href|src)="([^"]+\.(?:css|js|woff2))"/g)].map((match) => match[1])) {
   if (!fs.existsSync(path.join(root, "renderer", ref))) throw new Error(`Broken HTML asset: ${ref}`);
 }
-for (const id of ["messages", "promptInput", "sendButton", "threadList", "branchButton", "branchPopover", "branchList", "settingsBackdrop", "settingsSearch", "rawConfigEditor", "accountPopover", "authMenuButton", "providerUrl", "discoverModelsButton", "dockTabs", "dockTabAdd", "dockTabPrev", "dockTabNext", "dockDynamicPanes", "fileTree", "fileFilterInput", "fileCodeView", "sidebarResizer", "inspectorResizer", "agentModeButton", "agentModeLabel"]) {
+for (const id of ["messages", "promptInput", "sendButton", "threadList", "branchButton", "branchPopover", "branchList", "settingsBackdrop", "settingsSearch", "rawConfigEditor", "accountPopover", "authMenuButton", "providerUrl", "discoverModelsButton", "dockTabs", "dockTabAdd", "dockTabPrev", "dockTabNext", "dockDynamicPanes", "fileTree", "fileFilterInput", "fileCodeView", "sidebarResizer", "inspectorResizer", "agentModeButton", "agentModeLabel", "localeSelect"]) {
   if (!html.includes(`id="${id}"`) || !js.includes(`#${id}`)) throw new Error(`UI wiring missing: ${id}`);
 }
 for (const selector of [".app-shell", ".sidebar", ".conversation", ".composer", ".inspector", ".message", ".tool-card"]) {
@@ -35,7 +35,7 @@ for (const selector of [".app-shell", ".sidebar", ".conversation", ".composer", 
 for (const token of ["--accent", "--surface", "--text", "--line", "--shadow-composer"]) {
   if (!css.includes(token)) throw new Error(`Design token missing: ${token}`);
 }
-for (const feature of ["scheduleStreamingRender", "scheduleSideStreamingRender", "requestAnimationFrame", "openPicker", "picker-popover", "dock-status--workspace", "dock-status--local", "grokLogoShimmer", "assets/grok-mark.png", "discoverProviderModels", "nativeSettingGroups", "config:save-raw", "auth:login", "onAuthEvent", "git:info", "switchGitBranch", "branch-popover", "dock-tabbar", "terminal:create", "onTerminalEvent", "side-task-composer", "data-browser-view", "workspace:list", "providers:discover", "providers:probe-all", "providers:refresh", "onProviderEvent", "startSessionUpdateBridge", "tool_call_update", "toolMessageMarkup", "thinking-block", "permission_requested", "runtime:models", "hydrateRuntimeModels", "settings-search-hit", "settingsSearchCatalog", "integration-detail-modal", "openIntegrationDetail", "slash-popover", "slashCommands", "file-explorer", "file-tree", "pane-resizer", "bindPaneResizer", "applyPaneWidths", "tool-steps", "toolGroupMarkup", "ensureActiveAssistant", "updateTurnProgress", "stream-caret", "agent-mode-picker", "openAgentModePicker", "permissionMode", "buildCliArgs", "streaming-json", "platform-darwin"]) {
+for (const feature of ["scheduleStreamingRender", "scheduleSideStreamingRender", "requestAnimationFrame", "openPicker", "picker-popover", "dock-status--workspace", "dock-status--local", "grokLogoShimmer", "assets/grok-mark.png", "discoverProviderModels", "nativeSettingGroups", "config:save-raw", "auth:login", "onAuthEvent", "git:info", "switchGitBranch", "branch-popover", "dock-tabbar", "terminal:create", "onTerminalEvent", "side-task-composer", "data-browser-view", "workspace:list", "providers:discover", "providers:probe-all", "providers:refresh", "onProviderEvent", "startSessionUpdateBridge", "tool_call_update", "toolMessageMarkup", "thinking-block", "permission_requested", "runtime:models", "hydrateRuntimeModels", "settings-search-hit", "settingsSearchCatalog", "integration-detail-modal", "openIntegrationDetail", "slash-popover", "slashCommands", "file-explorer", "file-tree", "pane-resizer", "bindPaneResizer", "applyPaneWidths", "tool-steps", "toolGroupMarkup", "ensureActiveAssistant", "updateTurnProgress", "stream-caret", "agent-mode-picker", "openAgentModePicker", "permissionMode", "buildCliArgs", "streaming-json", "platform-darwin", "GrokI18n", "applyLocale", "localeSelect", "locales-native.js", "nativeSettingTitle"]) {
   if (!`${html}\n${js}\n${css}\n${backend}`.includes(feature)) throw new Error(`Desktop interaction missing: ${feature}`);
 }
 for (const removed of ["AcpAgentRun", "agent stdio", "grok:permission-respond", "respondPermission", "handleToolPermission"]) {
