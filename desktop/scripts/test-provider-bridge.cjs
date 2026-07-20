@@ -34,7 +34,15 @@ const tools = [
 
   let upstreamRequest = null;
   const bridge = createProviderBridge({
-    resolveProvider: () => ({ provider: { id: "provider-fixture", baseUrl: "https://upstream.invalid/v1", protocol: "openai" }, apiKey: "sk-fixture" }),
+    resolveProvider: () => ({
+      provider: {
+        id: "provider-fixture",
+        baseUrl: "https://upstream.invalid/v1",
+        protocol: "openai",
+        models: [{ id: "fixture-model", toolCapability: "bridge" }]
+      },
+      apiKey: "sk-fixture"
+    }),
     fetchImpl: async (url, init) => {
       upstreamRequest = { url, init, body: JSON.parse(init.body) };
       return new Response(JSON.stringify({
@@ -63,5 +71,59 @@ const tools = [
   } finally {
     await bridge.stop();
   }
-  console.log("Provider bridge tool-name repair and non-streaming compatibility verified.");
+
+  let releaseNativeStream;
+  let nativeUpstreamRequest = null;
+  const encoder = new TextEncoder();
+  const nativeBridge = createProviderBridge({
+    resolveProvider: () => ({
+      provider: {
+        id: "provider-native",
+        baseUrl: "https://native.invalid/v1",
+        protocol: "openai",
+        models: [{ id: "native-model", toolCapability: "native" }]
+      },
+      apiKey: "sk-native"
+    }),
+    fetchImpl: async (url, init) => {
+      nativeUpstreamRequest = { url, init, body: JSON.parse(init.body) };
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":"first"}}]}\n\n'));
+          releaseNativeStream = () => {
+            controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":" second"}}]}\n\ndata: [DONE]\n\n'));
+            controller.close();
+          };
+        }
+      });
+      return new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } });
+    }
+  });
+  await nativeBridge.start();
+  try {
+    const response = await fetch(`${nativeBridge.baseUrlFor("provider-native")}/chat/completions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: "native-model", messages: [{ role: "user", content: "stream with tools" }], tools, stream: true, stream_options: { include_usage: true } })
+    });
+    const reader = response.body.getReader();
+    const first = await reader.read();
+    assert.equal(response.status, 200);
+    assert.match(new TextDecoder().decode(first.value), /first/);
+    assert.equal(nativeUpstreamRequest.body.stream, true);
+    assert.deepEqual(nativeUpstreamRequest.body.stream_options, { include_usage: true });
+    assert.equal(nativeUpstreamRequest.init.headers.accept, "text/event-stream, application/json");
+    releaseNativeStream();
+    let remainder = "";
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      remainder += new TextDecoder().decode(chunk.value);
+    }
+    assert.match(remainder, /second/);
+    assert.match(remainder, /data: \[DONE\]/);
+  } finally {
+    await nativeBridge.stop();
+  }
+  console.log("Provider bridge native streaming and tool-repair fallback verified.");
 })().catch((error) => { console.error(error); process.exit(1); });

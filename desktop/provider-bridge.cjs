@@ -116,6 +116,51 @@ function responseHeaders(response, bodyLength) {
   return headers;
 }
 
+function streamingResponseHeaders(response) {
+  const headers = {};
+  for (const [key, value] of response.headers.entries()) {
+    if (["content-encoding", "content-length", "transfer-encoding", "connection"].includes(key.toLowerCase())) continue;
+    headers[key] = value;
+  }
+  return headers;
+}
+
+function waitForDrainOrClose(response) {
+  return new Promise((resolve) => {
+    const done = () => {
+      response.off("drain", done);
+      response.off("close", done);
+      response.off("error", done);
+      resolve();
+    };
+    response.once("drain", done);
+    response.once("close", done);
+    response.once("error", done);
+  });
+}
+
+async function pipeStreamingResponse(upstream, response) {
+  response.writeHead(upstream.status, streamingResponseHeaders(upstream));
+  if (!upstream.body) { response.end(); return; }
+  const reader = upstream.body.getReader();
+  const cancelUpstream = () => { void reader.cancel(); };
+  response.once("close", cancelUpstream);
+  try {
+    while (!response.destroyed) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!response.write(Buffer.from(value))) await waitForDrainOrClose(response);
+    }
+    if (response.destroyed) await reader.cancel();
+    else response.end();
+  } catch (error) {
+    if (!response.destroyed) response.destroy(error);
+  } finally {
+    response.off("close", cancelUpstream);
+    reader.releaseLock();
+  }
+}
+
 function readRequest(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -154,8 +199,10 @@ function createProviderBridge({ resolveProvider, fetchImpl = globalThis.fetch, h
       const raw = await readRequest(request);
       const incoming = JSON.parse(raw || "{}");
       const hasTools = Array.isArray(incoming.tools) && incoming.tools.length > 0;
+      const model = resolved.provider.models?.find((item) => item.id === incoming.model || item.localId === incoming.model);
+      const needsToolRepair = endpoint === "chat/completions" && hasTools && model?.toolCapability === "bridge";
       const upstreamBody = endpoint === "chat/completions"
-        ? normalizeChatRequest(incoming, { forceNonStreaming: hasTools })
+        ? normalizeChatRequest(incoming, { forceNonStreaming: needsToolRepair })
         : incoming;
       const headers = {
         "content-type": "application/json",
@@ -172,9 +219,13 @@ function createProviderBridge({ resolveProvider, fetchImpl = globalThis.fetch, h
         body: JSON.stringify(upstreamBody),
         signal: AbortSignal.timeout(120_000)
       });
+      if (upstream.ok && upstreamBody.stream === true && !needsToolRepair) {
+        await pipeStreamingResponse(upstream, response);
+        return;
+      }
       let output = await upstream.text();
       let contentType = upstream.headers.get("content-type") || "application/json";
-      if (upstream.ok && endpoint === "chat/completions" && hasTools) {
+      if (upstream.ok && needsToolRepair) {
         let parsed;
         try { parsed = normalizeChatCompletion(JSON.parse(output), incoming.tools); } catch { parsed = null; }
         if (parsed) {
