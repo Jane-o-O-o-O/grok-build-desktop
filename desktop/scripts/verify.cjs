@@ -41,6 +41,9 @@ for (const feature of ["scheduleStreamingRender", "scheduleSideStreamingRender",
 for (const removed of ["AcpAgentRun", "agent stdio", "grok:permission-respond", "respondPermission", "handleToolPermission"]) {
   if (`${backend}\n${js}`.includes(removed)) throw new Error(`Removed ACP interaction returned: ${removed}`);
 }
+for (const feature of ["t(definition.titleKey)", "t(item.titleKey)", "t(item.descKey)"]) {
+  if (!js.includes(feature)) throw new Error(`Localized workbench label wiring missing: ${feature}`);
+}
 const iconGenerator = fs.readFileSync(path.join(root, "scripts/generate-icon.py"), "utf8");
 if (!iconGenerator.includes("logo07.txt") || !iconGenerator.includes("logo24.txt") || !iconGenerator.includes("BRAILLE_DOTS")) {
   throw new Error("Desktop icon is no longer derived from the canonical TUI braille logo");

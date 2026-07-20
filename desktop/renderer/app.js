@@ -243,7 +243,12 @@
     if (state.model === "auto") state.modelLabel = t("composer.autoModel");
     if (["low", "medium", "high"].includes(state.effort)) state.effortLabel = effortLabel(state.effort);
     for (const tab of state.dockTabs) {
-      if (tab.type === "tasks") tab.title = t("dock.sideTasks");
+      const definition = dockTypes[tab.type];
+      if (!definition) continue;
+      const sameType = state.dockTabs.filter((item) => item.type === tab.type);
+      const index = sameType.findIndex((item) => item.id === tab.id);
+      const numbered = ["tasks", "terminal", "browser"].includes(tab.type) && index > 0;
+      tab.title = `${t(definition.titleKey)}${numbered ? ` ${index + 1}` : ""}`;
     }
   }
 
@@ -1019,7 +1024,7 @@
     const target = $("#dockTabs");
     target.innerHTML = state.dockTabs.map((tab) => {
       const definition = dockTypes[tab.type] || dockTypes.tasks;
-      return `<button class="dock-tab ${tab.id === state.activeDockTabId ? "is-active" : ""}" data-dock-tab="${tab.id}"><svg><use href="#${definition.icon}"/></svg><span>${escapeHtml(tab.title || definition.title)}</span>${state.dockTabs.length > 1 ? `<i class="dock-tab__close" data-close-dock="${tab.id}"><svg><use href="#i-x"/></svg></i>` : ""}</button>`;
+      return `<button class="dock-tab ${tab.id === state.activeDockTabId ? "is-active" : ""}" data-dock-tab="${tab.id}"><svg><use href="#${definition.icon}"/></svg><span>${escapeHtml(tab.title || t(definition.titleKey))}</span>${state.dockTabs.length > 1 ? `<i class="dock-tab__close" data-close-dock="${tab.id}"><svg><use href="#i-x"/></svg></i>` : ""}</button>`;
     }).join("");
     ensureDynamicDockPanes();
     const active = state.dockTabs.find((tab) => tab.id === state.activeDockTabId) || state.dockTabs[0];
@@ -1051,10 +1056,11 @@
     let tab = multiInstance ? null : state.dockTabs.find((item) => item.type === type);
     if (!tab) {
       const number = state.dockTabs.filter((item) => item.type === type).length + 1;
+      const title = t(definition.titleKey);
       tab = {
         id: `${type}-${uid()}`,
         type,
-        title: `${definition.title}${number > 1 ? ` ${number}` : ""}`,
+        title: `${title}${number > 1 ? ` ${number}` : ""}`,
         ...(type === "tasks" ? { messages: [], sessionId: null, runId: null } : {}),
         ...(type === "terminal" ? { cwd: state.cwd, output: "", terminalReady: false, history: [] } : {}),
         ...(type === "browser" ? { url: "about:blank" } : {})
@@ -1081,7 +1087,7 @@
   }
 
   function renderDockTabPicker() {
-    $("#dockTabPicker").innerHTML = Object.entries(dockTypes).map(([type, item]) => `<button class="dock-tab-choice" data-open-dock="${type}"><svg><use href="#${item.icon}"/></svg><span><b>${item.title}</b><small>${item.description}</small></span></button>`).join("");
+    $("#dockTabPicker").innerHTML = Object.entries(dockTypes).map(([type, item]) => `<button class="dock-tab-choice" data-open-dock="${type}"><svg><use href="#${item.icon}"/></svg><span><b>${escapeHtml(t(item.titleKey))}</b><small>${escapeHtml(t(item.descKey))}</small></span></button>`).join("");
     $$('[data-open-dock]').forEach((button) => button.addEventListener("click", () => openDockType(button.dataset.openDock)));
   }
 
