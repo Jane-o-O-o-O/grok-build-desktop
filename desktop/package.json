@@ -2,7 +2,11 @@
   "name": "grok-build-desktop",
   "version": "0.1.0",
   "description": "Grok Build desktop GUI — Electron AI coding workspace for the official grok / Grok Build TUI runtime",
-  "author": "Grok Build Desktop",
+  "homepage": "https://github.com/Jane-o-O-o-O/grok-build-gui",
+  "author": {
+    "name": "Jane-o-O-o-O",
+    "email": "Jane-o-O-o-O@users.noreply.github.com"
+  },
   "main": "main.cjs",
   "private": true,
   "scripts": {
@@ -60,6 +64,7 @@
       "icon": "build/icon.png",
       "target": ["AppImage", "deb"],
       "category": "Development",
+      "maintainer": "Jane-o-O-o-O <Jane-o-O-o-O@users.noreply.github.com>",
       "artifactName": "Grok-Build-Desktop-${version}-Linux-${arch}.${ext}"
     }
   }

@@ -45,11 +45,11 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci
       - name: Build Windows installer
-        run: npx electron-builder --win nsis --x64
+        run: npx electron-builder --win nsis --x64 --publish never
       - name: Build portable ZIP
         shell: pwsh
         run: |
-          npx electron-builder --dir --win --x64
+          npx electron-builder --dir --win --x64 --publish never
           $version = node -p "require('./package.json').version"
           Compress-Archive -Path "dist/win-unpacked/*" -DestinationPath "dist/Grok-Build-Desktop-$version-Windows-x64-Portable.zip" -Force
       - uses: actions/upload-artifact@v4
@@ -77,7 +77,7 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci
       - name: Build unsigned macOS DMGs
-        run: npx electron-builder --mac dmg --x64 --arm64
+        run: npx electron-builder --mac dmg --x64 --arm64 --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: macos-release
@@ -99,7 +99,7 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci
       - name: Build Linux packages
-        run: npx electron-builder --linux AppImage deb --x64
+        run: npx electron-builder --linux AppImage deb --x64 --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: linux-release
