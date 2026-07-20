@@ -2,7 +2,8 @@ const assert = require("node:assert/strict");
 const {
   createProviderBridge,
   inferToolName,
-  normalizeChatCompletion
+  normalizeChatCompletion,
+  normalizeChatRequest
 } = require("../provider-bridge.cjs");
 
 const tools = [
@@ -18,6 +19,18 @@ const tools = [
     choices: [{ index: 0, message: { role: "assistant", tool_calls: [{ id: "call_fixture", type: "function", function: { name: "", arguments: '{"command":"pwd"}' } }] } }]
   }, tools);
   assert.equal(normalized.choices[0].message.tool_calls[0].function.name, "run_terminal_command");
+  assert.deepEqual(
+    normalizeChatRequest({ stream: true, stream_options: { include_usage: true } }),
+    { stream: true, stream_options: { include_usage: true } }
+  );
+  assert.deepEqual(
+    normalizeChatRequest({ stream: true, stream_options: { include_usage: true } }, { forceNonStreaming: true }),
+    { stream: false }
+  );
+  assert.deepEqual(
+    normalizeChatRequest({ stream: false, stream_options: { include_usage: true } }),
+    { stream: false }
+  );
 
   let upstreamRequest = null;
   const bridge = createProviderBridge({
@@ -36,12 +49,14 @@ const tools = [
     const response = await fetch(`${bridge.baseUrlFor("provider-fixture")}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ model: "fixture-model", messages: [{ role: "user", content: "run pwd" }], tools, stream: true })
+      body: JSON.stringify({ model: "fixture-model", messages: [{ role: "user", content: "run pwd" }], tools, stream: true, stream_options: { include_usage: true } })
     });
     const body = await response.text();
     assert.equal(response.status, 200);
     assert.equal(upstreamRequest.url, "https://upstream.invalid/v1/chat/completions");
     assert.equal(upstreamRequest.body.stream, false);
+    assert.equal("stream_options" in upstreamRequest.body, false);
+    assert.equal(upstreamRequest.init.headers.accept, "application/json");
     assert.equal(upstreamRequest.init.headers.authorization, "Bearer sk-fixture");
     assert.match(body, /run_terminal_command/);
     assert.match(body, /data: \[DONE\]/);

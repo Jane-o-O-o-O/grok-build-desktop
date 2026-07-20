@@ -71,6 +71,13 @@ function normalizeChatCompletion(body, tools = []) {
   };
 }
 
+function normalizeChatRequest(body, { forceNonStreaming = false } = {}) {
+  const normalized = { ...(body || {}) };
+  if (forceNonStreaming) normalized.stream = false;
+  if (normalized.stream !== true) delete normalized.stream_options;
+  return normalized;
+}
+
 function chatCompletionSse(body) {
   const id = body.id || `chatcmpl_${crypto.randomBytes(10).toString("hex")}`;
   const created = Number(body.created) || Math.floor(Date.now() / 1000);
@@ -147,10 +154,12 @@ function createProviderBridge({ resolveProvider, fetchImpl = globalThis.fetch, h
       const raw = await readRequest(request);
       const incoming = JSON.parse(raw || "{}");
       const hasTools = Array.isArray(incoming.tools) && incoming.tools.length > 0;
-      const upstreamBody = endpoint === "chat/completions" && hasTools ? { ...incoming, stream: false } : incoming;
+      const upstreamBody = endpoint === "chat/completions"
+        ? normalizeChatRequest(incoming, { forceNonStreaming: hasTools })
+        : incoming;
       const headers = {
         "content-type": "application/json",
-        accept: incoming.stream ? "text/event-stream, application/json" : "application/json"
+        accept: upstreamBody.stream ? "text/event-stream, application/json" : "application/json"
       };
       if (resolved.provider.protocol === "anthropic") {
         headers["x-api-key"] = resolved.apiKey;
@@ -218,5 +227,6 @@ module.exports = {
   chatCompletionSse,
   createProviderBridge,
   inferToolName,
-  normalizeChatCompletion
+  normalizeChatCompletion,
+  normalizeChatRequest
 };
