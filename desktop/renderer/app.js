@@ -7,6 +7,10 @@
   const platform = api?.platform || "web";
   document.documentElement.classList.add(`platform-${platform}`);
   const STORAGE_KEY = "grok-desktop-state-v1";
+  const TIP_FLAGS_KEY = "grok-desktop-tips-v1";
+  const RUNTIME_INSTALL_DOCS = "https://x.ai/cli";
+  const MACOS_XATTR_COMMAND = 'xattr -dr com.apple.quarantine "/Applications/Grok Build.app"';
+  let runtimeSetupDismissedSession = false;
   const MAX_ATTACHMENTS = 32;
   const t = (key, vars) => window.GrokI18n?.t(key, vars) ?? key;
   const PERMISSION_MODES = {
@@ -227,8 +231,16 @@
   let slashIndex = 0;
   let slashMatches = [];
   let fileFilter = "";
+  let fileFilterTimer = null;
+  let fileTreeBusy = false;
+  let fileTreeBound = false;
+  let fileTreeLastInteract = 0;
   let fileTreeCache = new Map();
   let activeWorkspaceFile = null;
+  let fileEditorBaseline = "";
+  let fileEditorDirty = false;
+  let fileEditorReadOnly = false;
+  let fileSaveBusy = false;
 
   function normalizePermissionMode(value) {
     if (value === "always-approve" || value === "bypassPermissions") return "always-approve";
@@ -250,6 +262,10 @@
     for (const tab of state.dockTabs) {
       const definition = dockTypes[tab.type];
       if (!definition) continue;
+      if (tab.type === "browser" && tab.pageTitle) {
+        tab.title = tab.pageTitle;
+        continue;
+      }
       const sameType = state.dockTabs.filter((item) => item.type === tab.type);
       const index = sameType.findIndex((item) => item.id === tab.id);
       const numbered = ["tasks", "terminal", "browser"].includes(tab.type) && index > 0;
@@ -263,6 +279,14 @@
     if ($("#localeSelect")) $("#localeSelect").value = state.locale;
     syncLocalizedDefaults();
     updateAccountUI();
+    updateRuntimeDockStatus();
+    updateRuntimeSetupCommand();
+    updateRuntimeSettingsActions();
+    renderFileBreadcrumb(activeWorkspaceFile);
+    const tabName = $("#fileTabName");
+    if (tabName) tabName.textContent = activeWorkspaceFile ? basename(activeWorkspaceFile) : t("file.noSelection");
+    if (!activeWorkspaceFile) renderFileCode(null);
+    else updateFileMeta(activeWorkspaceFile, $$(".file-code__lines span").length || 0);
     renderNativeSettings();
     renderIntegrationSummary();
     renderSavedProviders();
@@ -434,6 +458,18 @@
   }
 
   function welcomeMarkup() {
+    if (!runtimeState.connected) {
+      return `<div class="welcome">
+      <div class="welcome-mark" aria-hidden="true"></div>
+      <h1>${escapeHtml(t("welcome.setupTitle"))}</h1>
+      <p>${escapeHtml(t("welcome.setupBody"))}</p>
+      <div class="welcome-setup-actions">
+        <button type="button" class="primary-button" data-runtime-action="open">${escapeHtml(t("welcome.setupOpen"))}</button>
+        <button type="button" class="secondary-button" data-runtime-action="pick">${escapeHtml(t("welcome.setupChoose"))}</button>
+        <button type="button" class="secondary-button" data-runtime-action="redetect">${escapeHtml(t("welcome.setupRedetect"))}</button>
+      </div>
+    </div>`;
+    }
     return `<div class="welcome">
       <div class="welcome-mark" aria-hidden="true"></div>
       <h1>${escapeHtml(t("welcome.title"))}</h1>
@@ -811,7 +847,7 @@
       if (document.hidden || !$("#settingsBackdrop")?.hidden) return;
       void refreshGitInfo({ quiet: true });
       if (state.inspectorOpen && activeDockType() === "files") void softRefreshWorkspaceFiles();
-    }, 2500);
+    }, 5000);
   }
 
   function stopWorkspaceWatch() {
@@ -820,10 +856,25 @@
   }
 
   async function softRefreshWorkspaceFiles() {
-    if (!state.inspectorOpen || activeDockType() !== "files") return;
-    for (const key of [...fileTreeCache.keys()]) {
-      if (!String(key).endsWith("::open")) fileTreeCache.delete(key);
+    if (!state.inspectorOpen || activeDockType() !== "files" || !api) return;
+    if (fileTreeBusy || fileEditorDirty || Date.now() - fileTreeLastInteract < 1200) return;
+    const dirKeys = [...fileTreeCache.keys()].filter((key) => !String(key).endsWith("::open"));
+    if (!dirKeys.length) dirKeys.push(".");
+    let changed = false;
+    for (const key of dirKeys) {
+      const dir = key === "." ? "" : key;
+      const result = await api.listWorkspaceDir(state.cwd, dir);
+      if (!result.ok) continue;
+      const next = result.entries || [];
+      const prev = fileTreeCache.get(key) || [];
+      const nextSig = next.map((entry) => `${entry.type}:${entry.path}`).join("|");
+      const prevSig = prev.map((entry) => `${entry.type}:${entry.path}`).join("|");
+      if (nextSig !== prevSig) {
+        fileTreeCache.set(key, next);
+        changed = true;
+      }
     }
+    if (!changed) return;
     const tree = $("#fileTree");
     const scrollTop = tree?.scrollTop || 0;
     await loadFileTreeDir("");
@@ -838,32 +889,32 @@
     $$(".file-tree-item.is-context").forEach((item) => item.classList.remove("is-context"));
   }
 
-  function openFileContextMenu(event, entry) {
+  function openFileContextMenu(event, entry, triggerEl = null) {
     event.preventDefault();
     event.stopPropagation();
     closeFileContextMenu();
-    const trigger = event.currentTarget;
-    trigger.classList.add("is-context");
+    const trigger = triggerEl || event.currentTarget;
+    trigger?.classList?.add("is-context");
     const menu = document.createElement("div");
     menu.className = "file-context-menu";
     const abs = workspaceAbsolute(entry.path);
     const actions = entry.type === "dir"
       ? [
-          { id: "reveal", label: "在资源管理器中显示", icon: "i-folder" },
-          { id: "open-app", label: "用系统打开", icon: "i-external" },
+          { id: "reveal", label: t("file.reveal"), icon: "i-folder" },
+          { id: "open-app", label: t("file.openApp"), icon: "i-external" },
           { sep: true },
-          { id: "copy-path", label: "复制路径", icon: "i-copy" },
-          { id: "copy-rel", label: "复制相对路径", icon: "i-copy" },
-          { id: "copy-name", label: "复制名称", icon: "i-copy" }
+          { id: "copy-path", label: t("file.copyPath"), icon: "i-copy" },
+          { id: "copy-rel", label: t("file.copyRel"), icon: "i-copy" },
+          { id: "copy-name", label: t("file.copyName"), icon: "i-copy" }
         ]
       : [
-          { id: "open", label: "打开预览", icon: "i-file" },
-          { id: "open-app", label: "用系统打开", icon: "i-external" },
-          { id: "reveal", label: "在资源管理器中显示", icon: "i-folder" },
+          { id: "open", label: t("file.openEdit"), icon: "i-file" },
+          { id: "open-app", label: t("file.openApp"), icon: "i-external" },
+          { id: "reveal", label: t("file.reveal"), icon: "i-folder" },
           { sep: true },
-          { id: "copy-path", label: "复制路径", icon: "i-copy" },
-          { id: "copy-rel", label: "复制相对路径", icon: "i-copy" },
-          { id: "copy-name", label: "复制文件名", icon: "i-copy" }
+          { id: "copy-path", label: t("file.copyPath"), icon: "i-copy" },
+          { id: "copy-rel", label: t("file.copyRel"), icon: "i-copy" },
+          { id: "copy-name", label: t("file.copyFileName"), icon: "i-copy" }
         ];
     menu.innerHTML = actions.map((item) => item.sep
       ? "<hr/>"
@@ -1070,7 +1121,7 @@
         title: `${title}${number > 1 ? ` ${number}` : ""}`,
         ...(type === "tasks" ? { messages: [], sessionId: null, runId: null } : {}),
         ...(type === "terminal" ? { cwd: state.cwd, output: "", terminalReady: false, history: [] } : {}),
-        ...(type === "browser" ? { url: "about:blank" } : {})
+        ...(type === "browser" ? { url: "about:blank", pageTitle: null, browserLoadError: null } : {})
       };
       state.dockTabs.push(tab);
     }
@@ -1389,48 +1440,209 @@
   }
 
   function normalizeBrowserUrl(value) {
-    const raw = String(value || "").trim(); if (!raw) return "about:blank";
+    const raw = String(value || "").trim();
+    if (!raw) return "";
     if (/^(about:|file:)/i.test(raw)) return raw;
     if (/^https?:\/\//i.test(raw)) return raw;
-    return /^(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(raw) ? `http://${raw}` : `https://${raw}`;
+    if (/^:\d{2,5}(?:\/|$)/.test(raw)) return `http://localhost${raw}`;
+    if (/^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(?::\d+)?(?:\/|$)/i.test(raw)) return `http://${raw}`;
+    if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|\[?fe80:|\[?fc|\[?fd)/i.test(raw)) return `http://${raw}`;
+    if (/\.local(?::\d+)?(?:\/|$)/i.test(raw)) return `http://${raw}`;
+    if (/^[a-z0-9.-]+:\d{2,5}(?:\/|$)/i.test(raw)) return `http://${raw}`;
+    return `https://${raw}`;
+  }
+
+  function shortenBrowserTitle(title, url) {
+    const clean = String(title || "").replace(/\s+/g, " ").trim();
+    if (clean && clean !== "about:blank") return clean.slice(0, 28);
+    try {
+      const host = new URL(url).hostname;
+      return host || t("dock.browser");
+    } catch {
+      return t("dock.browser");
+    }
+  }
+
+  function updateBrowserTabLabel(tab) {
+    const label = shortenBrowserTitle(tab.pageTitle, tab.url);
+    tab.title = label;
+    const span = $(`[data-dock-tab="${tab.id}"] span`);
+    if (span) span.textContent = label;
+    saveStateSoon();
+  }
+
+  function setBrowserStatus(status, kind, message) {
+    if (!status) return;
+    status.className = `browser-status${kind ? ` is-${kind}` : ""}`;
+    status.innerHTML = `<i></i><span>${escapeHtml(message)}</span>`;
+  }
+
+  function syncBrowserNavButtons(pane, view) {
+    const back = $('[data-browser-action="back"]', pane);
+    const forward = $('[data-browser-action="forward"]', pane);
+    const external = $('[data-browser-action="external"]', pane);
+    try {
+      if (back) back.disabled = !view.canGoBack();
+      if (forward) forward.disabled = !view.canGoForward();
+      const current = view.getURL?.() || "";
+      if (external) external.disabled = !/^https?:\/\//i.test(current);
+    } catch {
+      if (back) back.disabled = true;
+      if (forward) forward.disabled = true;
+    }
+  }
+
+  function activeBrowserContext() {
+    const tab = state.dockTabs.find((item) => item.id === state.activeDockTabId);
+    if (!tab || tab.type !== "browser" || !state.inspectorOpen) return null;
+    const pane = [...$$("[data-dock-id]")].find((item) => item.dataset.dockId === tab.id);
+    if (!pane) return null;
+    return {
+      tab,
+      pane,
+      view: $("[data-browser-view]", pane),
+      input: $("[data-browser-url]", pane),
+      status: $("[data-browser-status]", pane)
+    };
+  }
+
+  function refreshActiveBrowserPane() {
+    const ctx = activeBrowserContext();
+    if (!ctx?.view) return;
+    try {
+      const style = ctx.view.style;
+      style.width = "99.9%";
+      requestAnimationFrame(() => { style.width = "100%"; });
+      syncBrowserNavButtons(ctx.pane, ctx.view);
+    } catch {}
   }
 
   function initializeBrowserPane(tab, pane) {
     tab.url ||= "about:blank";
+    tab.browserLoadError = null;
+    tab.pendingBrowserUrl = null;
+    const partition = `persist:grok-browser-${String(tab.id || "main").replace(/[^a-zA-Z0-9_-]/g, "")}`;
     pane.innerHTML = `<form class="browser-bar" data-browser-form>
-      <button type="button" class="icon-button browser-nav browser-nav--back" data-browser-action="back" title="后退"><svg><use href="#i-chevron"/></svg></button>
-      <button type="button" class="icon-button browser-nav" data-browser-action="forward" title="前进"><svg><use href="#i-chevron"/></svg></button>
-      <button type="button" class="icon-button browser-nav" data-browser-action="reload" title="刷新"><svg><use href="#i-refresh"/></svg></button>
-      <input data-browser-url value="${escapeHtml(tab.url === "about:blank" ? "" : tab.url)}" placeholder="输入网址或 localhost 地址" spellcheck="false"/>
-      <button type="submit">前往</button><button type="button" class="icon-button" data-browser-action="external" title="在系统浏览器打开"><svg><use href="#i-external"/></svg></button></form>
-      <div class="browser-status" data-browser-status><i></i><span>输入地址后开始浏览</span></div>
-      <div class="browser-stage"><webview data-browser-view src="${escapeHtml(tab.url)}" partition="persist:grok-browser" webpreferences="contextIsolation=yes,nodeIntegration=no,sandbox=yes"></webview></div>`;
-    const view = $("[data-browser-view]", pane); const input = $("[data-browser-url]", pane); const status = $("[data-browser-status]", pane);
-    const updateLocation = (url) => { tab.url = url; input.value = url === "about:blank" ? "" : url; saveState(); };
-    view.addEventListener("dom-ready", () => { tab.browserReady = true; status.className = "browser-status is-ready"; status.innerHTML = "<i></i><span>页面已就绪</span>"; });
-    view.addEventListener("did-start-loading", () => { status.className = "browser-status is-loading"; status.innerHTML = "<i></i><span>正在载入…</span>"; });
-    view.addEventListener("did-stop-loading", () => { status.className = "browser-status is-ready"; status.innerHTML = "<i></i><span>载入完成</span>"; try { updateLocation(view.getURL()); } catch {} });
+      <button type="button" class="icon-button browser-nav browser-nav--back" data-browser-action="back" data-i18n-title="browser.back" title="${escapeHtml(t("browser.back"))}" disabled><svg><use href="#i-chevron"/></svg></button>
+      <button type="button" class="icon-button browser-nav" data-browser-action="forward" data-i18n-title="browser.forward" title="${escapeHtml(t("browser.forward"))}" disabled><svg><use href="#i-chevron"/></svg></button>
+      <button type="button" class="icon-button browser-nav" data-browser-action="reload" data-i18n-title="browser.reload" title="${escapeHtml(t("browser.reload"))}"><svg><use href="#i-refresh"/></svg></button>
+      <input data-browser-url value="${escapeHtml(tab.url === "about:blank" ? "" : tab.url)}" data-i18n-placeholder="browser.placeholder" placeholder="${escapeHtml(t("browser.placeholder"))}" spellcheck="false" autocomplete="off"/>
+      <button type="submit" data-i18n="browser.go">${escapeHtml(t("browser.go"))}</button>
+      <button type="button" class="icon-button" data-browser-action="external" data-i18n-title="browser.external" title="${escapeHtml(t("browser.external"))}" disabled><svg><use href="#i-external"/></svg></button>
+    </form>
+      <div class="browser-status" data-browser-status><i></i><span>${escapeHtml(t("browser.hint"))}</span></div>
+      <div class="browser-stage"><webview data-browser-view src="${escapeHtml(tab.url)}" partition="${partition}" allowpopups webpreferences="contextIsolation=yes, nodeIntegration=no, sandbox=yes"></webview></div>`;
+    const view = $("[data-browser-view]", pane);
+    const input = $("[data-browser-url]", pane);
+    const status = $("[data-browser-status]", pane);
+
+    const updateLocation = (url, { force = false } = {}) => {
+      if (!url) return;
+      tab.url = url;
+      if (force || document.activeElement !== input) {
+        input.value = url === "about:blank" ? "" : url;
+      }
+      saveStateSoon();
+      syncBrowserNavButtons(pane, view);
+    };
+
+    view.addEventListener("dom-ready", () => {
+      tab.browserReady = true;
+      if (tab.pendingBrowserUrl) {
+        const next = tab.pendingBrowserUrl;
+        tab.pendingBrowserUrl = null;
+        navigateBrowser(tab, pane, next, { force: true });
+      } else if (!tab.browserLoadError) {
+        setBrowserStatus(status, "ready", t("browser.ready"));
+      }
+      syncBrowserNavButtons(pane, view);
+    });
+    view.addEventListener("did-start-loading", () => {
+      tab.browserLoadError = null;
+      setBrowserStatus(status, "loading", t("browser.loading"));
+    });
+    view.addEventListener("did-stop-loading", () => {
+      try { updateLocation(view.getURL()); } catch {}
+      if (tab.browserLoadError) {
+        setBrowserStatus(status, "error", tab.browserLoadError);
+      } else {
+        setBrowserStatus(status, "ready", t("browser.loaded"));
+      }
+      syncBrowserNavButtons(pane, view);
+    });
     view.addEventListener("did-navigate", (event) => updateLocation(event.url));
     view.addEventListener("did-navigate-in-page", (event) => updateLocation(event.url));
-    view.addEventListener("did-fail-load", (event) => { if (event.errorCode === -3) return; status.className = "browser-status is-error"; status.innerHTML = `<i></i><span>${escapeHtml(event.errorDescription || "页面载入失败")}</span>`; });
-    $("[data-browser-form]", pane).addEventListener("submit", (event) => { event.preventDefault(); navigateBrowser(tab, pane, input.value); });
-    $$('[data-browser-action]', pane).forEach((button) => button.addEventListener("click", () => {
+    view.addEventListener("page-title-updated", (event) => {
+      tab.pageTitle = shortenBrowserTitle(event.title, tab.url);
+      updateBrowserTabLabel(tab);
+    });
+    view.addEventListener("did-fail-load", (event) => {
+      if (event.errorCode === -3 || event.isMainFrame === false) return;
+      tab.browserLoadError = event.errorDescription || t("browser.loadFailed");
+      setBrowserStatus(status, "error", tab.browserLoadError);
+      syncBrowserNavButtons(pane, view);
+    });
+    input.addEventListener("focus", () => input.select());
+    $("[data-browser-form]", pane).addEventListener("submit", (event) => {
+      event.preventDefault();
+      navigateBrowser(tab, pane, input.value);
+    });
+    $$("[data-browser-action]", pane).forEach((button) => button.addEventListener("click", () => {
       try {
-        if (button.dataset.browserAction === "back" && view.canGoBack()) view.goBack();
-        if (button.dataset.browserAction === "forward" && view.canGoForward()) view.goForward();
-        if (button.dataset.browserAction === "reload") view.reload();
-        if (button.dataset.browserAction === "external") api?.openExternal(view.getURL() || normalizeBrowserUrl(input.value));
-      } catch (error) { status.className = "browser-status is-error"; status.textContent = error.message; }
+        if (button.dataset.browserAction === "back") {
+          if (view.canGoBack()) view.goBack();
+          return;
+        }
+        if (button.dataset.browserAction === "forward") {
+          if (view.canGoForward()) view.goForward();
+          return;
+        }
+        if (button.dataset.browserAction === "reload") {
+          view.reload();
+          return;
+        }
+        if (button.dataset.browserAction === "external") {
+          const target = view.getURL?.() || normalizeBrowserUrl(input.value);
+          if (!/^https?:\/\//i.test(target || "")) {
+            toast(t("browser.external"), t("browser.externalUnavailable"));
+            return;
+          }
+          api?.openExternal(target);
+        }
+      } catch (error) {
+        setBrowserStatus(status, "error", error.message || t("browser.loadFailed"));
+      }
     }));
   }
 
-  function navigateBrowser(tab, pane, value) {
-    const url = normalizeBrowserUrl(value); const view = $("[data-browser-view]", pane); const input = $("[data-browser-url]", pane);
-    tab.url = url; input.value = url; saveState();
+  function navigateBrowser(tab, pane, value, { force = false } = {}) {
+    const raw = String(value || "").trim();
+    if (!raw && !force) return;
+    const url = normalizeBrowserUrl(raw) || "about:blank";
+    const view = $("[data-browser-view]", pane);
+    const input = $("[data-browser-url]", pane);
+    const status = $("[data-browser-status]", pane);
+    if (!view) return;
+    tab.url = url;
+    tab.browserLoadError = null;
+    if (input) input.value = url === "about:blank" ? "" : url;
+    saveStateSoon();
+    setBrowserStatus(status, "loading", t("browser.loading"));
     try {
-      if (typeof view.loadURL === "function" && tab.browserReady) view.loadURL(url).catch(() => view.setAttribute("src", url));
-      else view.setAttribute("src", url);
-    } catch { view.setAttribute("src", url); }
+      if (!tab.browserReady) {
+        tab.pendingBrowserUrl = url;
+        view.setAttribute("src", url);
+        return;
+      }
+      if (typeof view.loadURL === "function") {
+        view.loadURL(url).catch(() => view.setAttribute("src", url));
+      } else {
+        view.setAttribute("src", url);
+      }
+    } catch {
+      view.setAttribute("src", url);
+    }
+    syncBrowserNavButtons(pane, view);
   }
 
   function updateDockScrollButtons() {
@@ -1443,6 +1655,7 @@
   function refreshActiveDockPane() {
     const type = activeDockType();
     if (type === "files") refreshWorkspaceFiles();
+    if (type === "browser") refreshActiveBrowserPane();
     const tab = state.dockTabs.find((item) => item.id === state.activeDockTabId);
     if (tab && ["tasks", "terminal", "browser"].includes(type)) {
       ensureDynamicDockPanes();
@@ -1459,35 +1672,228 @@
     return "i-file";
   }
 
-  function renderFileCode(content) {
+  function detectFileLanguage(filePath = "") {
+    const name = basename(filePath).toLowerCase();
+    if (name === "dockerfile") return "sh";
+    const ext = name.includes(".") ? name.split(".").pop() : "";
+    const map = {
+      js: "js", mjs: "js", cjs: "js", jsx: "jsx", ts: "ts", tsx: "tsx", mts: "ts", cts: "ts",
+      py: "py", pyw: "py", rs: "rs", go: "go", css: "css", scss: "css", less: "css",
+      html: "html", htm: "html", svg: "html", xml: "html", json: "json", jsonc: "json",
+      toml: "toml", ini: "toml", cfg: "toml", yml: "yaml", yaml: "yaml", md: "md", markdown: "md",
+      sh: "sh", bash: "sh", zsh: "sh", ps1: "ps1", c: "c", h: "c", cpp: "c", hpp: "c", cc: "c",
+      java: "js", txt: "text", log: "text"
+    };
+    return map[ext] || "text";
+  }
+
+  function languageLabel(lang) {
+    const labels = {
+      js: "JavaScript", jsx: "JSX", ts: "TypeScript", tsx: "TSX", py: "Python", rs: "Rust", go: "Go",
+      css: "CSS", html: "HTML", json: "JSON", toml: "TOML", yaml: "YAML", md: "Markdown",
+      sh: "Shell", ps1: "PowerShell", c: "C/C++", text: "Text"
+    };
+    return labels[lang] || String(lang || "text").toUpperCase();
+  }
+
+  function fileCodeEmptyMarkup() {
+    return `<div class="file-code__empty">
+      <svg class="file-code__empty-icon" aria-hidden="true"><use href="#i-file"/></svg>
+      <b>${escapeHtml(t("file.emptyTitle"))}</b>
+      <small>${escapeHtml(t("dock.openFileHint"))}</small>
+    </div>`;
+  }
+
+  function updateFileDirtyUI() {
+    const dirty = $("#fileTabDirty");
+    const save = $("#fileSaveButton");
+    if (dirty) dirty.hidden = !fileEditorDirty;
+    if (save) {
+      save.hidden = !activeWorkspaceFile || fileEditorReadOnly;
+      save.disabled = fileSaveBusy || !fileEditorDirty || fileEditorReadOnly;
+      save.classList.toggle("is-busy", fileSaveBusy);
+      save.textContent = fileSaveBusy ? t("file.saving") : t("file.save");
+    }
+  }
+
+  function updateFileMeta(filePath, lineCount) {
+    const langNode = $("#fileMetaLang");
+    const linesNode = $("#fileMetaLines");
+    if (!langNode || !linesNode) return;
+    if (!filePath) {
+      langNode.hidden = true;
+      linesNode.hidden = true;
+      langNode.textContent = "—";
+      linesNode.textContent = "";
+      updateFileDirtyUI();
+      return;
+    }
+    langNode.hidden = false;
+    linesNode.hidden = false;
+    langNode.textContent = languageLabel(detectFileLanguage(filePath));
+    linesNode.textContent = t("file.lineCount", { count: lineCount });
+    updateFileDirtyUI();
+  }
+
+  function syncFileLineNumbers(source) {
+    const linesNode = $("#fileCodeLines");
+    const editor = $("#fileCodeEditor");
+    if (!linesNode || !editor) return;
+    const text = String(source ?? editor.value ?? "");
+    const count = Math.max(1, text.split("\n").length);
+    const current = linesNode.childElementCount;
+    if (current !== count) {
+      if (count > current) {
+        const frag = document.createDocumentFragment();
+        for (let i = current; i < count; i += 1) {
+          const span = document.createElement("span");
+          span.textContent = String(i + 1);
+          frag.appendChild(span);
+        }
+        linesNode.appendChild(frag);
+      } else {
+        while (linesNode.childElementCount > count) linesNode.removeChild(linesNode.lastChild);
+      }
+    }
+    updateFileMeta(activeWorkspaceFile, count);
+    editor.style.height = `${Math.max(linesNode.scrollHeight, editor.parentElement?.clientHeight || 0)}px`;
+  }
+
+  function markFileEditorDirty() {
+    const editor = $("#fileCodeEditor");
+    if (!editor || fileEditorReadOnly) return;
+    const next = editor.value;
+    fileEditorDirty = next !== fileEditorBaseline;
+    syncFileLineNumbers(next);
+    updateFileDirtyUI();
+  }
+
+  function bindFileEditor(editor) {
+    if (!editor || editor.dataset.bound === "1") return;
+    editor.dataset.bound = "1";
+    editor.addEventListener("input", markFileEditorDirty);
+    editor.addEventListener("keydown", (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        void saveWorkspaceFile();
+      }
+      if (event.key === "Tab") {
+        event.preventDefault();
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        const value = editor.value;
+        editor.value = `${value.slice(0, start)}  ${value.slice(end)}`;
+        editor.selectionStart = editor.selectionEnd = start + 2;
+        markFileEditorDirty();
+      }
+    });
+  }
+
+  function renderFileCode(content, filePath = activeWorkspaceFile, { readOnly = false } = {}) {
     const view = $("#fileCodeView");
     if (!view) return;
     if (content == null) {
-      view.innerHTML = '<div class="file-code__empty">打开工作区中的文件以查看内容</div>';
+      fileEditorBaseline = "";
+      fileEditorDirty = false;
+      fileEditorReadOnly = false;
+      view.classList.add("is-empty");
+      view.classList.remove("is-editing");
+      view.innerHTML = fileCodeEmptyMarkup();
+      updateFileMeta(null);
       return;
     }
-    const lines = String(content).replace(/\r\n/g, "\n").split("\n");
-    view.innerHTML = `<div class="file-code__lines">${lines.map((_, index) => `<span>${index + 1}</span>`).join("")}</div><pre class="file-code__content">${escapeHtml(content)}</pre>`;
+    const source = String(content).replace(/\r\n/g, "\n");
+    fileEditorBaseline = source;
+    fileEditorDirty = false;
+    fileEditorReadOnly = Boolean(readOnly);
+    view.classList.remove("is-empty");
+    view.classList.add("is-editing");
+    const lines = source.split("\n");
+    view.innerHTML = `<div class="file-code__lines" id="fileCodeLines">${lines.map((_, index) => `<span>${index + 1}</span>`).join("")}</div><textarea class="file-code__editor" id="fileCodeEditor" spellcheck="false" wrap="off" ${readOnly ? "readonly" : ""}></textarea>`;
+    const editor = $("#fileCodeEditor");
+    if (editor) {
+      editor.value = source;
+      bindFileEditor(editor);
+      editor.style.height = `${Math.max($("#fileCodeLines")?.scrollHeight || 0, view.clientHeight || 0)}px`;
+      if (!readOnly) queueMicrotask(() => editor.focus({ preventScroll: true }));
+    }
+    updateFileMeta(filePath, lines.length);
   }
 
   function renderFileBreadcrumb(filePath) {
     const crumb = $("#fileBreadcrumb");
     if (!crumb) return;
     if (!filePath) {
-      crumb.innerHTML = "<span>选择右侧文件进行预览</span>";
+      crumb.innerHTML = `<span>${escapeHtml(t("file.pickPreview"))}</span>`;
       return;
     }
-    const parts = filePath.split("/").filter(Boolean);
-    crumb.innerHTML = `<span>${escapeHtml(basename(state.cwd))}</span>${parts.map((part) => `<span>›</span><b>${escapeHtml(part)}</b>`).join("")}`;
+    const parts = filePath.split(/[/\\]/).filter(Boolean);
+    crumb.innerHTML = `<span>${escapeHtml(basename(state.cwd))}</span>${parts.map((part) => `<span class="file-crumb-sep">/</span><b>${escapeHtml(part)}</b>`).join("")}`;
   }
 
   function fileTreeItemMarkup(entry, depth) {
     const isDir = entry.type === "dir";
     const expanded = isDir && fileTreeCache.has(`${entry.path}::open`);
-    return `<button type="button" class="file-tree-item ${isDir ? "is-dir" : ""} ${expanded ? "is-expanded" : ""} ${activeWorkspaceFile === entry.path ? "is-active" : ""}" data-file-path="${escapeHtml(entry.path)}" data-file-type="${entry.type}" style="padding-left:${6 + depth * 12}px">${isDir ? '<svg class="file-tree-chevron"><use href="#i-chevron"/></svg>' : '<span style="width:10px"></span>'}<svg><use href="#${fileIconFor(entry.name, entry.type)}"/></svg><span>${escapeHtml(entry.name)}</span></button>${isDir ? `<div class="file-tree-children ${expanded ? "is-open" : ""}" data-file-children="${escapeHtml(entry.path)}"></div>` : ""}`;
+    return `<button type="button" class="file-tree-item ${isDir ? "is-dir" : ""} ${expanded ? "is-expanded" : ""} ${activeWorkspaceFile === entry.path ? "is-active" : ""}" data-file-path="${escapeHtml(entry.path)}" data-file-type="${entry.type}" data-file-depth="${depth}" style="padding-left:${8 + depth * 14}px">${isDir ? '<svg class="file-tree-chevron"><use href="#i-chevron"/></svg>' : '<span style="width:10px"></span>'}<svg><use href="#${fileIconFor(entry.name, entry.type)}"/></svg><span>${escapeHtml(entry.name)}</span></button>${isDir ? `<div class="file-tree-children ${expanded ? "is-open" : ""}" data-file-children="${escapeHtml(entry.path)}"></div>` : ""}`;
+  }
+
+  async function toggleFileTreeDir(button, pathValue, depth) {
+    const openKey = `${pathValue}::open`;
+    const childHost = button.nextElementSibling;
+    if (fileTreeCache.has(openKey)) {
+      fileTreeCache.delete(openKey);
+      button.classList.remove("is-expanded");
+      if (childHost?.classList.contains("file-tree-children")) {
+        childHost.classList.remove("is-open");
+        childHost.innerHTML = "";
+      }
+      return;
+    }
+    fileTreeCache.set(openKey, true);
+    button.classList.add("is-expanded");
+    if (childHost?.classList.contains("file-tree-children")) {
+      childHost.classList.add("is-open");
+      childHost.innerHTML = `<div class="file-tree-empty">${escapeHtml(t("file.loadingDir"))}</div>`;
+      await loadFileTreeDir(pathValue, childHost, depth + 1);
+    }
+  }
+
+  function bindFileTreeOnce() {
+    const tree = $("#fileTree");
+    if (!tree || fileTreeBound) return;
+    fileTreeBound = true;
+    tree.addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-file-path]");
+      if (!button || !tree.contains(button)) return;
+      event.preventDefault();
+      fileTreeLastInteract = Date.now();
+      closeFileContextMenu();
+      const pathValue = button.dataset.filePath;
+      const type = button.dataset.fileType;
+      const depth = Number(button.dataset.fileDepth || 0);
+      if (type === "dir") {
+        if (fileTreeBusy) return;
+        fileTreeBusy = true;
+        try { await toggleFileTreeDir(button, pathValue, depth); }
+        finally { fileTreeBusy = false; }
+        return;
+      }
+      await openWorkspaceFile(pathValue);
+    });
+    tree.addEventListener("contextmenu", (event) => {
+      const button = event.target.closest("[data-file-path]");
+      if (!button || !tree.contains(button)) return;
+      fileTreeLastInteract = Date.now();
+      openFileContextMenu(event, {
+        path: button.dataset.filePath,
+        type: button.dataset.fileType,
+        name: basename(button.dataset.filePath || "")
+      }, button);
+    });
   }
 
   async function loadFileTreeDir(dir = "", host = null, depth = 0) {
+    bindFileTreeOnce();
     const target = host || $("#fileTree");
     if (!target) return;
     const cacheKey = dir || ".";
@@ -1495,9 +1901,9 @@
     if (!entries) {
       const result = api
         ? await api.listWorkspaceDir(state.cwd, dir)
-        : { ok: true, entries: [{ name: "README.md", path: "README.md", type: "file", size: 12 }, { name: "desktop", path: "desktop", type: "dir", size: 0 }] };
+        : { ok: true, entries: [{ name: "README.md", path: "README.md", type: "file" }, { name: "desktop", path: "desktop", type: "dir" }] };
       if (!result.ok) {
-        target.innerHTML = `<div class="file-tree-empty">${escapeHtml(result.error || "无法读取目录")}</div>`;
+        target.innerHTML = `<div class="file-tree-empty">${escapeHtml(result.error || t("file.readDirFailed"))}</div>`;
         return;
       }
       entries = result.entries || [];
@@ -1509,59 +1915,74 @@
       : entries;
     target.innerHTML = visible.length
       ? visible.map((entry) => fileTreeItemMarkup(entry, depth)).join("")
-      : '<div class="file-tree-empty">没有匹配的文件</div>';
-    $$("[data-file-path]", target).forEach((button) => {
-      const pathValue = button.dataset.filePath;
-      const type = button.dataset.fileType;
-      const entry = visible.find((item) => item.path === pathValue) || { path: pathValue, type, name: basename(pathValue) };
-      button.addEventListener("click", async (event) => {
-        event.stopPropagation();
-        closeFileContextMenu();
-        if (type === "dir") {
-          const openKey = `${pathValue}::open`;
-          const childHost = button.nextElementSibling;
-          if (fileTreeCache.has(openKey)) {
-            fileTreeCache.delete(openKey);
-            button.classList.remove("is-expanded");
-            if (childHost?.classList.contains("file-tree-children")) { childHost.classList.remove("is-open"); childHost.innerHTML = ""; }
-            return;
-          }
-          fileTreeCache.set(openKey, true);
-          button.classList.add("is-expanded");
-          if (childHost?.classList.contains("file-tree-children")) {
-            childHost.classList.add("is-open");
-            await loadFileTreeDir(pathValue, childHost, depth + 1);
-          }
-          return;
-        }
-        await openWorkspaceFile(pathValue);
-      });
-      button.addEventListener("contextmenu", (event) => openFileContextMenu(event, entry));
-    });
-    for (const entry of visible.filter((item) => item.type === "dir" && fileTreeCache.has(`${item.path}::open`))) {
-      const childHost = target.querySelector(`[data-file-children="${entry.path.replace(/"/g, '\\"')}"]`);
-      if (childHost) await loadFileTreeDir(entry.path, childHost, depth + 1);
-    }
+      : `<div class="file-tree-empty">${escapeHtml(t("file.emptyTree"))}</div>`;
+    const openDirs = visible.filter((item) => item.type === "dir" && fileTreeCache.has(`${item.path}::open`));
+    await Promise.all(openDirs.map(async (entry) => {
+      const childHost = target.querySelector(`[data-file-children="${CSS.escape(entry.path)}"]`);
+      if (childHost) {
+        childHost.classList.add("is-open");
+        await loadFileTreeDir(entry.path, childHost, depth + 1);
+      }
+    }));
   }
 
   async function refreshWorkspaceFiles() {
+    const openKeys = [...fileTreeCache.keys()].filter((key) => String(key).endsWith("::open"));
     fileTreeCache.clear();
+    for (const key of openKeys) fileTreeCache.set(key, true);
     await loadFileTreeDir("");
   }
 
+  async function saveWorkspaceFile() {
+    if (!activeWorkspaceFile || fileEditorReadOnly || fileSaveBusy) return false;
+    const editor = $("#fileCodeEditor");
+    if (!editor) return false;
+    const content = editor.value;
+    if (!api) {
+      fileEditorBaseline = content;
+      fileEditorDirty = false;
+      updateFileDirtyUI();
+      toast(t("file.saved"), activeWorkspaceFile);
+      return true;
+    }
+    fileSaveBusy = true;
+    updateFileDirtyUI();
+    try {
+      const result = await api.writeWorkspaceFile(state.cwd, activeWorkspaceFile, content);
+      if (!result?.ok) {
+        toast(t("file.saveFailed"), result?.error || activeWorkspaceFile);
+        return false;
+      }
+      fileEditorBaseline = content;
+      fileEditorDirty = false;
+      toast(t("file.saved"), activeWorkspaceFile);
+      return true;
+    } finally {
+      fileSaveBusy = false;
+      updateFileDirtyUI();
+    }
+  }
+
   async function openWorkspaceFile(file) {
+    if (fileEditorDirty && activeWorkspaceFile && activeWorkspaceFile !== file) {
+      if (!window.confirm(t("file.unsavedConfirm"))) return;
+    }
     activeWorkspaceFile = file;
     const tabName = $("#fileTabName");
     if (tabName) tabName.textContent = basename(file);
     renderFileBreadcrumb(file);
-    renderFileCode("正在读取…");
+    renderFileCode(t("file.reading"), file, { readOnly: true });
     $$("[data-file-path]").forEach((button) => button.classList.toggle("is-active", button.dataset.filePath === file));
     if (!api) {
-      renderFileCode(`# ${file}\n\n预览模式示例内容。`);
+      renderFileCode(`# ${file}\n\n${t("file.previewSample")}`, file);
       return;
     }
     const result = await api.readWorkspaceFile(state.cwd, file);
-    renderFileCode(result.ok ? result.content : result.error);
+    if (!result.ok) {
+      renderFileCode(result.error, file, { readOnly: true });
+      return;
+    }
+    renderFileCode(result.content, file);
   }
 
   function clamp(value, min, max) {
@@ -1685,6 +2106,12 @@
 
   function bindDynamicActions() {
     $$(".quick-action").forEach((button) => button.addEventListener("click", () => { $("#promptInput").value = button.dataset.prompt; autoSizeInput(); $("#promptInput").focus(); }));
+    $$("[data-runtime-action]").forEach((button) => button.addEventListener("click", () => {
+      const action = button.dataset.runtimeAction;
+      if (action === "open") openRuntimeSetup();
+      else if (action === "pick") void pickRuntimeBinary();
+      else if (action === "redetect") void refreshRuntimeDetection({ fromSetup: true });
+    }));
     $$(".copy-message").forEach((button) => button.addEventListener("click", async () => {
       const id = button.closest(".message").dataset.messageId;
       const message = activeThread()?.messages.find((item) => item.id === id);
@@ -1828,7 +2255,15 @@
       return;
     }
     const result = await api.sendPrompt({ clientId: "main", prompt, cwd: thread.cwd || state.cwd, sessionId: thread.sessionId, model: state.model, effort: state.effort, permissionMode: state.permissionMode, attachments: state.attachments });
-    if (!result.ok) { activeAssistantMessage.text = `启动 Grok 时出现问题：${result.error}`; toast("Runtime 错误", result.error); finishRun("启动失败"); renderMessages(); return; }
+    if (!result.ok) {
+      const message = runtimeErrorMessage(result);
+      activeAssistantMessage.text = message;
+      toast(t("runtime.setup.title"), message);
+      finishRun("启动失败");
+      renderMessages();
+      if (isRuntimeMissingError(result)) openRuntimeSetup({ force: true });
+      return;
+    }
     if (result.compatibility?.compatibilityChecked) { applyModelCompatibility(result.compatibility); toast("模型工具能力已检测", result.compatibility.toolCapabilityDetail || "已更新第三方模型兼容配置"); }
     activeRun = result.runId;
     state.attachments = [];
@@ -1911,7 +2346,25 @@
   async function chooseWorkspace() {
     if (!api) { toast("桌面预览", "Electron 中可选择本地工作区"); return; }
     const cwd = await api.pickWorkspace();
-    if (cwd) { state.cwd = cwd; const thread = activeThread(); if (thread && !thread.messages.length) thread.cwd = cwd; saveState(); updateWorkspace(); updateWindowTrail(); await refreshGitInfo(); fileTreeCache.clear(); activeWorkspaceFile = null; refreshActiveDockPane(); toast("已切换工作区", cwd); }
+    if (cwd) {
+      if (fileEditorDirty && !window.confirm(t("file.unsavedConfirm"))) return;
+      state.cwd = cwd;
+      const thread = activeThread();
+      if (thread && !thread.messages.length) thread.cwd = cwd;
+      saveState();
+      updateWorkspace();
+      updateWindowTrail();
+      await refreshGitInfo();
+      fileTreeCache.clear();
+      activeWorkspaceFile = null;
+      fileEditorDirty = false;
+      renderFileBreadcrumb(null);
+      renderFileCode(null);
+      const tabName = $("#fileTabName");
+      if (tabName) tabName.textContent = t("file.noSelection");
+      refreshActiveDockPane();
+      toast("已切换工作区", cwd);
+    }
   }
 
   async function chooseFiles() {
@@ -2398,12 +2851,22 @@
     if (authState.signedIn) {
       stopAuthPolling();
       const result = await api.logout();
-      if (!result.ok) { toast("退出登录失败", result.error); return; }
+      if (!result.ok) {
+        const message = runtimeErrorMessage(result);
+        toast(t("account.signOut"), message);
+        if (isRuntimeMissingError(result)) openRuntimeSetup({ force: true });
+        return;
+      }
       authState = result.info; updateAccountUI(); toast("已退出 Grok", "本地 Runtime 仍可使用第三方模型"); return;
     }
     $("#authProgress").hidden = false; $("#authProgressText").textContent = t("account.connectingAuth");
     const result = await api.login();
-    if (!result.ok) { $("#authProgressText").textContent = result.error; toast(t("account.loginFailed"), result.error); }
+    if (!result.ok) {
+      const message = runtimeErrorMessage(result);
+      $("#authProgressText").textContent = message;
+      toast(t("account.loginFailed"), message);
+      if (isRuntimeMissingError(result)) openRuntimeSetup({ force: true });
+    }
     else { startAuthPolling(); toast(t("account.connectingToast"), t("account.oauthOpening")); }
   }
 
@@ -2982,12 +3445,152 @@
     $("#toastStack").appendChild(node); setTimeout(() => node.remove(), 3600);
   }
 
+  function loadTipFlags() {
+    try {
+      return JSON.parse(localStorage.getItem(TIP_FLAGS_KEY) || "{}") || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveTipFlags(flags) {
+    localStorage.setItem(TIP_FLAGS_KEY, JSON.stringify(flags));
+  }
+
+  function currentPlatform() {
+    return runtimeState.platform || api?.platform || (navigator.platform?.startsWith("Win") ? "win32" : navigator.platform?.includes("Mac") ? "darwin" : "linux");
+  }
+
+  function runtimeInstallCommand() {
+    return currentPlatform() === "win32"
+      ? "irm https://x.ai/cli/install.ps1 | iex"
+      : "curl -fsSL https://x.ai/cli/install.sh | bash";
+  }
+
+  function isRuntimeMissingError(result) {
+    const code = result?.errorCode || result?.error;
+    return code === "RUNTIME_NOT_FOUND" || /runtime was not found|未检测到 Grok Runtime/i.test(String(result?.error || ""));
+  }
+
+  function runtimeErrorMessage(result) {
+    const code = result?.errorCode || result?.error;
+    if (code === "RUNTIME_NOT_FOUND") return t("runtime.setup.notFound");
+    if (code === "INVALID_BINARY") return t("runtime.setup.invalidBinary");
+    return String(result?.error || t("runtime.setup.stillMissing"));
+  }
+
+  function updateRuntimeDockStatus() {
+    const dock = $("#runtimeDockStatus");
+    const label = $("#runtimeDockLabel");
+    if (!dock || !label) return;
+    const connected = Boolean(runtimeState.connected);
+    dock.classList.toggle("is-offline", !connected);
+    label.textContent = connected ? t("composer.connected") : t("composer.disconnected");
+    dock.title = connected
+      ? (runtimeState.version || runtimeState.binary || t("composer.connected"))
+      : t("runtime.setup.title");
+  }
+
+  function updateRuntimeSetupCommand() {
+    const node = $("#runtimeInstallCommand");
+    if (node) node.textContent = runtimeInstallCommand();
+  }
+
+  function updateRuntimeSettingsActions() {
+    const clearButton = $("#clearRuntimeBinary");
+    if (clearButton) clearButton.disabled = !runtimeState.customBinary;
+  }
+
+  function openRuntimeSetup({ force = false } = {}) {
+    if (!force && runtimeSetupDismissedSession && runtimeState.connected) return;
+    closeMacosTip();
+    updateRuntimeSetupCommand();
+    $("#runtimeSetupBackdrop").hidden = false;
+  }
+
+  function closeRuntimeSetup({ dismiss = false } = {}) {
+    $("#runtimeSetupBackdrop").hidden = true;
+    if (dismiss) runtimeSetupDismissedSession = true;
+    maybeShowMacosGatekeeperTip();
+  }
+
+  function openMacosTip() {
+    if (!$("#runtimeSetupBackdrop").hidden) return;
+    $("#macosXattrCommand").textContent = MACOS_XATTR_COMMAND;
+    $("#macosTipBackdrop").hidden = false;
+  }
+
+  function closeMacosTip({ remember = false } = {}) {
+    $("#macosTipBackdrop").hidden = true;
+    if (remember) {
+      const flags = loadTipFlags();
+      flags.macosGatekeeperTipSeen = true;
+      saveTipFlags(flags);
+    }
+  }
+
+  function maybeShowMacosGatekeeperTip() {
+    if (currentPlatform() !== "darwin") return;
+    if (!$("#runtimeSetupBackdrop").hidden) return;
+    if (!loadTipFlags().macosGatekeeperTipSeen) openMacosTip();
+  }
+
+  function maybeOfferRuntimeSetup() {
+    if (!api) return;
+    if (runtimeState.connected) {
+      maybeShowMacosGatekeeperTip();
+      return;
+    }
+    if (!runtimeSetupDismissedSession) openRuntimeSetup({ force: true });
+    else maybeShowMacosGatekeeperTip();
+  }
+
+  async function pickRuntimeBinary() {
+    if (!api?.pickRuntimeBinary) {
+      toast(t("runtime.setup.title"), t("toast.desktopPreviewHint"));
+      return null;
+    }
+    const result = await api.pickRuntimeBinary();
+    if (result?.canceled) return null;
+    if (!result?.ok) {
+      toast(t("runtime.setup.pickFailed"), runtimeErrorMessage(result));
+      return null;
+    }
+    applyRuntimeShell(result.info);
+    if (result.info?.connected) {
+      runtimeSetupDismissedSession = true;
+      closeRuntimeSetup();
+      void hydrateRuntimeModels();
+      toast(t("runtime.setup.connected"), result.info.version || result.info.binary || "");
+    } else {
+      toast(t("runtime.setup.stillMissing"), t("runtime.setup.stillMissingHint"));
+    }
+    return result.info;
+  }
+
+  async function clearRuntimeBinary() {
+    if (!api?.clearRuntimeBinary) return null;
+    const result = await api.clearRuntimeBinary();
+    if (!result?.ok) {
+      toast(t("runtime.setup.pickFailed"), runtimeErrorMessage(result));
+      return null;
+    }
+    applyRuntimeShell(result.info);
+    toast(t("runtime.setup.cleared"), result.info?.binary || t("settings.account.autoDetect"));
+    maybeOfferRuntimeSetup();
+    return result.info;
+  }
+
   function applyRuntimeShell(info) {
     runtimeState = { ...runtimeState, ...info };
-    $("#settingsRuntimePath").textContent = info.binary || "未检测到";
+    $("#settingsRuntimePath").textContent = info.binary || t("settings.account.notDetected");
     $("#settingsRuntimeVersion").textContent = info.version || "—";
     updateAccountUI();
     updateWorkspace();
+    updateRuntimeDockStatus();
+    updateRuntimeSettingsActions();
+    const thread = activeThread();
+    if (!thread || !thread.messages.length) renderMessages();
   }
 
   function applyRuntimeModels({ models = [], defaultModel = null } = {}) {
@@ -3026,8 +3629,10 @@
 
   async function detectRuntime({ waitForModels = false } = {}) {
     if (!api) {
-      runtimeState = { connected: true, version: "界面预览", binary: null, modelsReady: true };
+      runtimeState = { connected: true, version: "界面预览", binary: null, modelsReady: true, platform: "preview" };
       updateAccountUI();
+      updateRuntimeDockStatus();
+      updateRuntimeSettingsActions();
       return runtimeState;
     }
     const info = await api.runtimeInfo();
@@ -3037,16 +3642,27 @@
     return runtimeState;
   }
 
-  async function refreshRuntimeDetection() {
+  async function refreshRuntimeDetection({ fromSetup = false } = {}) {
     const button = $("#refreshRuntime");
-    button.disabled = true; button.classList.add("is-refreshing");
+    const setupButton = $("#runtimeSetupRedetect");
+    if (button) { button.disabled = true; button.classList.add("is-refreshing"); }
+    if (setupButton) { setupButton.disabled = true; setupButton.classList.add("is-refreshing"); }
     const previousPath = $("#settingsRuntimePath").textContent;
-    $("#settingsRuntimePath").textContent = "正在重新检测 Grok Runtime…";
+    $("#settingsRuntimePath").textContent = t("runtime.setup.detecting");
     try {
       const info = await detectRuntime({ waitForModels: true });
-      toast(info?.connected ? "Grok Runtime 已连接" : "Runtime 检测完成", info?.version || info?.binary || previousPath || "检测已完成");
+      if (info?.connected) {
+        runtimeSetupDismissedSession = true;
+        if (!$("#runtimeSetupBackdrop").hidden) closeRuntimeSetup();
+        toast(t("runtime.setup.connected"), info.version || info.binary || "");
+      } else {
+        toast(fromSetup ? t("runtime.setup.stillMissing") : t("runtime.setup.stillMissing"), info?.binary || previousPath || t("runtime.setup.stillMissingHint"));
+        if (fromSetup || !runtimeSetupDismissedSession) openRuntimeSetup({ force: true });
+      }
+      return info;
     } finally {
-      button.disabled = false; button.classList.remove("is-refreshing");
+      if (button) { button.disabled = false; button.classList.remove("is-refreshing"); }
+      if (setupButton) { setupButton.disabled = false; setupButton.classList.remove("is-refreshing"); }
     }
   }
 
@@ -3081,8 +3697,13 @@
     window.addEventListener("resize", updateDockScrollButtons);
     $("#fileFilterInput")?.addEventListener("input", async (event) => {
       fileFilter = event.target.value;
-      await loadFileTreeDir("");
+      fileTreeLastInteract = Date.now();
+      clearTimeout(fileFilterTimer);
+      fileFilterTimer = setTimeout(async () => {
+        await loadFileTreeDir("");
+      }, 160);
     });
+    $("#fileSaveButton")?.addEventListener("click", () => saveWorkspaceFile());
     $("#agentModeButton").addEventListener("click", (event) => {
       event.stopPropagation();
       openAgentModePicker(event.currentTarget);
@@ -3101,7 +3722,31 @@
       applyLocale();
       toast(t("toast.localeSwitched"), "");
     });
-    $("#refreshRuntime").addEventListener("click", refreshRuntimeDetection);
+    $("#refreshRuntime").addEventListener("click", () => refreshRuntimeDetection());
+    $("#pickRuntimeBinary")?.addEventListener("click", () => pickRuntimeBinary());
+    $("#clearRuntimeBinary")?.addEventListener("click", () => clearRuntimeBinary());
+    $("#openRuntimeSetup")?.addEventListener("click", () => openRuntimeSetup({ force: true }));
+    $("#runtimeDockStatus")?.addEventListener("click", () => {
+      if (runtimeState.connected) openSettings("account");
+      else openRuntimeSetup({ force: true });
+    });
+    $("#runtimeSetupClose")?.addEventListener("click", () => closeRuntimeSetup({ dismiss: true }));
+    $("#runtimeSetupLater")?.addEventListener("click", () => closeRuntimeSetup({ dismiss: true }));
+    $("#runtimeSetupBackdrop")?.addEventListener("click", (event) => { if (event.target === $("#runtimeSetupBackdrop")) closeRuntimeSetup({ dismiss: true }); });
+    $("#runtimeSetupPick")?.addEventListener("click", () => pickRuntimeBinary());
+    $("#runtimeSetupRedetect")?.addEventListener("click", () => refreshRuntimeDetection({ fromSetup: true }));
+    $("#runtimeCopyInstall")?.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(runtimeInstallCommand());
+      toast(t("runtime.setup.copied"), runtimeInstallCommand());
+    });
+    $("#runtimeOpenInstallDocs")?.addEventListener("click", () => api?.openExternal?.(RUNTIME_INSTALL_DOCS));
+    $("#macosTipClose")?.addEventListener("click", () => closeMacosTip({ remember: true }));
+    $("#macosTipDismiss")?.addEventListener("click", () => closeMacosTip({ remember: true }));
+    $("#macosTipBackdrop")?.addEventListener("click", (event) => { if (event.target === $("#macosTipBackdrop")) closeMacosTip({ remember: true }); });
+    $("#macosCopyXattr")?.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(MACOS_XATTR_COMMAND);
+      toast(t("macos.tip.copied"), MACOS_XATTR_COMMAND);
+    });
     $("#runtimeCard").addEventListener("click", (event) => { event.stopPropagation(); $("#accountPopover").hidden = !$("#accountPopover").hidden; });
     $("#profileMenuButton").addEventListener("click", () => openSettings("account"));
     $("#settingsMenuButton").addEventListener("click", () => openSettings("general"));
@@ -3158,9 +3803,29 @@
       if (mod && event.key.toLowerCase() === "n") { event.preventDefault(); createThread(); }
       if (mod && event.key === ",") { event.preventDefault(); openSettings(); }
       if (mod && event.key.toLowerCase() === "f" && !$("#settingsBackdrop").hidden) { event.preventDefault(); $("#settingsSearch").focus(); }
+      const browserCtx = activeBrowserContext();
+      if (browserCtx) {
+        const key = event.key.toLowerCase();
+        if (mod && key === "l") {
+          event.preventDefault();
+          browserCtx.input?.focus();
+          browserCtx.input?.select();
+        } else if (event.key === "F5" || (mod && key === "r")) {
+          event.preventDefault();
+          try { browserCtx.view?.reload(); } catch {}
+        } else if (event.altKey && event.key === "ArrowLeft") {
+          event.preventDefault();
+          try { if (browserCtx.view?.canGoBack()) browserCtx.view.goBack(); } catch {}
+        } else if (event.altKey && event.key === "ArrowRight") {
+          event.preventDefault();
+          try { if (browserCtx.view?.canGoForward()) browserCtx.view.goForward(); } catch {}
+        }
+      }
       if (event.key === "Escape") {
         if (fileContextMenu) { closeFileContextMenu(); return; }
         if (slashPopover) { closeSlashMenu(); return; }
+        if (!$("#macosTipBackdrop").hidden) { closeMacosTip({ remember: true }); return; }
+        if (!$("#runtimeSetupBackdrop").hidden) { closeRuntimeSetup({ dismiss: true }); return; }
         if (!$("#integrationDetailBackdrop").hidden) { closeIntegrationDetail(); return; }
         $("#accountPopover").hidden = true; $("#branchPopover").hidden = true; $("#branchButton").setAttribute("aria-expanded", "false"); closePicker(); closePalette(); closeSettings();
       }
@@ -3208,9 +3873,11 @@
   (async () => {
     await resolveWorkspaceState();
     renderAll();
+    updateRuntimeDockStatus();
     const runtimePromise = detectRuntime();
     await Promise.all([loadSavedProviders(), loadNativeConfig(), refreshAuthInfo()]);
     await runtimePromise;
+    maybeOfferRuntimeSetup();
     await refreshGitInfo();
     refreshActiveDockPane();
     startWorkspaceWatch();

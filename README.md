@@ -156,7 +156,19 @@ chmod +x Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage
 
 ### macOS Preview Note
 
-The v0.1.1 DMGs are built automatically but are not yet signed or notarized with an Apple Developer identity. macOS may show a developer verification prompt on first launch. In Finder, right-click the app and choose **Open**.
+The v0.1.1 DMGs are built automatically but are not yet signed or notarized with an Apple Developer identity. On first launch macOS Gatekeeper may block the app.
+
+1. Open **Finder** and locate **Grok Build**.
+2. Control-click (right-click) the app and choose **Open**.
+3. In the confirmation dialog, choose **Open** again.
+
+If the app is still quarantined, clear the attribute in Terminal (adjust the path if you did not install under `/Applications`):
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Grok Build.app"
+```
+
+The desktop app also shows this tip once on first macOS launch. Future signed builds will remove this friction.
 
 ---
 
@@ -167,6 +179,16 @@ The v0.1.1 DMGs are built automatically but are not yet signed or notarized with
 ```powershell
 grok --version
 grok models
+```
+
+If the CLI is not installed yet, use the official installer, or open the in-app **Runtime setup** guide (also under Settings → Account) to copy the command, re-detect, or choose a local binary:
+
+```powershell
+irm https://x.ai/cli/install.ps1 | iex
+```
+
+```bash
+curl -fsSL https://x.ai/cli/install.sh | bash
 ```
 
 ### 2. Run the Desktop App

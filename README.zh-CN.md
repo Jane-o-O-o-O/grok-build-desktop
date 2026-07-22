@@ -156,7 +156,19 @@ chmod +x Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage
 
 ### macOS 预览包说明
 
-v0.1.1 的 DMG 已完成自动构建，但尚未接入 Apple Developer 签名与公证。首次打开时 macOS 可能显示开发者验证提示，可在 Finder 中右键应用并选择“打开”。
+v0.1.1 的 DMG 已完成自动构建，但尚未接入 Apple Developer 签名与公证。首次打开时 macOS Gatekeeper 可能会拦截。
+
+1. 打开 **Finder**，找到 **Grok Build**。
+2. 按住 Control 点击（或右键）应用，选择 **打开**。
+3. 在提示框中再次确认 **打开**。
+
+若仍被隔离，可在终端清除隔离属性（若不在 `/Applications`，请改成实际路径）：
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Grok Build.app"
+```
+
+桌面端在 macOS 首次启动时也会显示一次相同提示。后续正式签名包会去掉这道摩擦。
 
 ---
 
@@ -167,6 +179,16 @@ v0.1.1 的 DMG 已完成自动构建，但尚未接入 Apple Developer 签名与
 ```powershell
 grok --version
 grok models
+```
+
+若尚未安装 CLI，可用官方安装脚本；也可在应用内打开 **Runtime 引导**（设置 → 账号）复制命令、重新检测，或选择本机二进制：
+
+```powershell
+irm https://x.ai/cli/install.ps1 | iex
+```
+
+```bash
+curl -fsSL https://x.ai/cli/install.sh | bash
 ```
 
 ### 2. 运行桌面程序

@@ -143,8 +143,8 @@
             </div>
           </div>
           <div class="dock-meta">
-            <button class="dock-status dock-status--workspace" id="cwdButton" title="切换工作区"><svg><use href="#i-folder"/></svg><span>Grok 工作区</span><b id="cwdLabel">未选择</b><svg class="dock-status__chevron"><use href="#i-chevron"/></svg></button>
-            <span class="dock-status dock-status--local"><i></i><span>本地 Runtime</span><b>已连接</b></span>
+            <button class="dock-status dock-status--workspace" id="cwdButton" title="切换工作区"><svg><use href="#i-folder"/></svg><span data-i18n="composer.workspace">Grok 工作区</span><b id="cwdLabel">未选择</b><svg class="dock-status__chevron"><use href="#i-chevron"/></svg></button>
+            <button type="button" class="dock-status dock-status--local" id="runtimeDockStatus" data-i18n-title="runtime.setup.title" title="Connect Grok Runtime"><i></i><span data-i18n="composer.localRuntime">本地 Runtime</span><b id="runtimeDockLabel" data-i18n="composer.connected">已连接</b></button>
           </div>
         </section>
       </main>
@@ -162,21 +162,35 @@
 
           <section class="dock-pane" data-dock-pane="files">
             <div class="file-explorer">
-              <div class="file-editor">
-                <div class="file-editor__tabs">
-                  <button type="button" class="file-tab is-active" id="fileTab"><svg><use href="#i-file"/></svg><span id="fileTabName">未选择文件</span></button>
+              <aside class="file-sidebar">
+                <div class="file-sidebar__head">
+                  <b data-i18n="file.explorerTitle">Explorer</b>
                 </div>
-                <div class="file-editor__crumb" id="fileBreadcrumb"><span>选择左侧文件进行预览</span></div>
+                <label class="file-filter"><svg><use href="#i-search"/></svg><input id="fileFilterInput" data-i18n-placeholder="dock.filterFiles" placeholder="筛选文件…" spellcheck="false"/></label>
+                <div class="file-tree" id="fileTree"></div>
+              </aside>
+              <div class="file-editor">
+                <div class="file-editor__chrome">
+                  <div class="file-editor__tabs">
+                    <button type="button" class="file-tab is-active" id="fileTab"><svg><use href="#i-file"/></svg><span id="fileTabName">未选择文件</span><i class="file-tab__dirty" id="fileTabDirty" hidden>•</i></button>
+                  </div>
+                  <div class="file-editor__meta">
+                    <span class="file-lang" id="fileMetaLang" hidden>—</span>
+                    <span class="file-lines" id="fileMetaLines" hidden></span>
+                    <button type="button" class="secondary-button file-save-button" id="fileSaveButton" hidden data-i18n="file.save">保存</button>
+                  </div>
+                </div>
+                <div class="file-editor__crumb" id="fileBreadcrumb"><span data-i18n="file.pickPreview">选择左侧文件进行编辑</span></div>
                 <div class="file-editor__body">
                   <div class="file-code" id="fileCodeView">
-                    <div class="file-code__empty">打开工作区中的文件以查看内容</div>
+                    <div class="file-code__empty">
+                      <svg class="file-code__empty-icon" aria-hidden="true"><use href="#i-file"/></svg>
+                      <b data-i18n="file.emptyTitle">打开一个文件开始阅读</b>
+                      <small data-i18n="dock.openFileHint">打开工作区中的文件以查看内容</small>
+                    </div>
                   </div>
                 </div>
               </div>
-              <aside class="file-sidebar">
-                <label class="file-filter"><svg><use href="#i-search"/></svg><input id="fileFilterInput" placeholder="筛选文件…" spellcheck="false"/></label>
-                <div class="file-tree" id="fileTree"></div>
-              </aside>
             </div>
           </section>
         </div>
@@ -223,7 +237,12 @@
             <section class="settings-panel" data-settings-panel="account" hidden>
               <div class="settings-panel__heading"><h3 data-i18n="settings.nav.account">Account</h3><p data-i18n="settings.account.desc">Manage Grok sign-in, team info, and runtime connection.</p></div>
               <div class="profile-hero"><span class="account-avatar account-avatar--hero" id="settingsAccountAvatar">G</span><span><h4 id="settingsAccountName">Sign in to Grok</h4><p id="settingsAccountEmail" data-i18n="settings.account.loginAfter">Sign in to use your Grok account in the desktop app</p><small id="settingsAccountTeam"></small></span><button class="primary-button" id="settingsAuthButton">Sign in to Grok</button></div>
-              <div class="settings-card"><div class="settings-row"><span><b data-i18n="account.runtime">Grok Runtime</b><small id="settingsRuntimePath" data-i18n="settings.account.autoDetect">Auto-detect</small></span><button class="secondary-button" id="refreshRuntime"><svg><use href="#i-refresh"/></svg><span data-i18n="settings.account.redetect">Re-detect</span></button></div><div class="settings-row"><span><b data-i18n="settings.account.version">Version</b><small data-i18n="settings.account.versionDesc">Native TUI runtime connected to the desktop app</small></span><code id="settingsRuntimeVersion">—</code></div></div>
+              <div class="settings-card">
+                <div class="settings-row"><span><b data-i18n="account.runtime">Grok Runtime</b><small id="settingsRuntimePath">Auto-detect</small></span><button class="secondary-button" id="refreshRuntime"><svg><use href="#i-refresh"/></svg><span data-i18n="settings.account.redetect">Re-detect</span></button></div>
+                <div class="settings-row"><span><b data-i18n="settings.account.customBinary">Custom runtime path</b><small data-i18n="settings.account.customBinaryDesc">Prefer the grok executable you select. Clear to restore auto-detect.</small></span><div class="settings-row-actions"><button class="secondary-button" id="pickRuntimeBinary" data-i18n="settings.account.chooseBinary">Choose binary</button><button class="secondary-button" id="clearRuntimeBinary" data-i18n="settings.account.clearBinary">Clear custom path</button><button class="secondary-button" id="openRuntimeSetup" data-i18n="settings.account.openSetup">Setup guide</button></div></div>
+                <div class="settings-row"><span><b data-i18n="settings.account.version">Version</b><small data-i18n="settings.account.versionDesc">Native TUI runtime connected to the desktop app</small></span><code id="settingsRuntimeVersion">—</code></div>
+                <p class="settings-hint" data-i18n="settings.account.installHint">Official install: Windows install.ps1, macOS/Linux install.sh (x.ai/cli).</p>
+              </div>
               <div class="auth-progress" id="authProgress" hidden><span class="status-dot is-busy"></span><pre id="authProgressText" data-i18n="account.startingLogin">Starting sign-in…</pre></div>
             </section>
 
@@ -286,6 +305,73 @@
             <button class="secondary-button" id="integrationDetailReveal"><svg><use href="#i-folder"/></svg><span data-i18n="integration.reveal">Reveal location</span></button>
             <button class="primary-button" id="integrationDetailOpen" data-i18n="integration.openConfig">Open config</button>
           </div>
+        </footer>
+      </section>
+    </div>
+
+    <div class="modal-backdrop guide-backdrop" id="runtimeSetupBackdrop" hidden>
+      <section class="guide-modal" role="dialog" aria-modal="true" aria-labelledby="runtimeSetupTitle">
+        <header>
+          <div>
+            <small data-i18n="runtime.setup.eyebrow">RUNTIME SETUP</small>
+            <h2 id="runtimeSetupTitle" data-i18n="runtime.setup.title">Connect Grok Runtime</h2>
+          </div>
+          <button class="icon-button" id="runtimeSetupClose" data-i18n-aria="integration.close" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+        </header>
+        <div class="guide-modal__body">
+          <p data-i18n="runtime.setup.body">This desktop app needs the native grok / Grok Build CLI on your machine.</p>
+          <div class="guide-install">
+            <div class="guide-install__head">
+              <b data-i18n="runtime.setup.installTitle">Install command</b>
+              <small data-i18n="runtime.setup.installHint">Run this in a terminal, then come back and choose Re-detect.</small>
+            </div>
+            <pre id="runtimeInstallCommand"></pre>
+            <div class="guide-install__actions">
+              <button class="secondary-button" id="runtimeCopyInstall"><span data-i18n="runtime.setup.copy">Copy command</span></button>
+              <button class="secondary-button" id="runtimeOpenInstallDocs"><span data-i18n="runtime.setup.openDocs">Open install docs</span></button>
+            </div>
+          </div>
+        </div>
+        <footer class="guide-modal__footer">
+          <button class="secondary-button" id="runtimeSetupLater" data-i18n="runtime.setup.later">Not now</button>
+          <div class="guide-modal__actions">
+            <button class="secondary-button" id="runtimeSetupPick"><span data-i18n="runtime.setup.chooseBinary">Choose binary…</span></button>
+            <button class="primary-button" id="runtimeSetupRedetect"><svg><use href="#i-refresh"/></svg><span data-i18n="runtime.setup.redetect">Re-detect</span></button>
+          </div>
+        </footer>
+      </section>
+    </div>
+
+    <div class="modal-backdrop guide-backdrop" id="macosTipBackdrop" hidden>
+      <section class="guide-modal" role="dialog" aria-modal="true" aria-labelledby="macosTipTitle">
+        <header>
+          <div>
+            <small data-i18n="macos.tip.eyebrow">MACOS PREVIEW</small>
+            <h2 id="macosTipTitle" data-i18n="macos.tip.title">Opening an unsigned preview build</h2>
+          </div>
+          <button class="icon-button" id="macosTipClose" data-i18n-aria="integration.close" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+        </header>
+        <div class="guide-modal__body">
+          <p data-i18n="macos.tip.body">macOS packages are not yet Apple-signed or notarized.</p>
+          <ol class="guide-steps">
+            <li data-i18n="macos.tip.step1">Locate Grok Build in Finder</li>
+            <li data-i18n="macos.tip.step2">Control-click (or right-click) the app and choose Open</li>
+            <li data-i18n="macos.tip.step3">Confirm Open again in the dialog</li>
+          </ol>
+          <div class="guide-install">
+            <div class="guide-install__head">
+              <b data-i18n="macos.tip.xattrTitle">If it is still quarantined, run this in Terminal:</b>
+              <small data-i18n="macos.tip.pathNote">If the app is not in /Applications, replace the path with the real location.</small>
+            </div>
+            <pre id="macosXattrCommand">xattr -dr com.apple.quarantine "/Applications/Grok Build.app"</pre>
+            <div class="guide-install__actions">
+              <button class="secondary-button" id="macosCopyXattr"><span data-i18n="macos.tip.copyXattr">Copy xattr command</span></button>
+            </div>
+          </div>
+        </div>
+        <footer class="guide-modal__footer">
+          <span></span>
+          <button class="primary-button" id="macosTipDismiss" data-i18n="macos.tip.dismiss">Got it</button>
         </footer>
       </section>
     </div>

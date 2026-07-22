@@ -78,6 +78,36 @@ function providerStorePath() {
     : path.join(app.getPath("userData"), "providers.json");
 }
 
+function runtimeStorePath() {
+  return process.env.GROK_DESKTOP_RUNTIME_STORE
+    ? path.resolve(process.env.GROK_DESKTOP_RUNTIME_STORE)
+    : path.join(app.getPath("userData"), "runtime.json");
+}
+
+function readRuntimeStore() {
+  try {
+    const value = JSON.parse(fs.readFileSync(runtimeStorePath(), "utf8"));
+    return { customBinary: typeof value.customBinary === "string" && value.customBinary.trim() ? value.customBinary.trim() : null };
+  } catch {
+    return { customBinary: null };
+  }
+}
+
+function persistRuntimeStore(store) {
+  const next = { customBinary: store?.customBinary || null };
+  fs.mkdirSync(path.dirname(runtimeStorePath()), { recursive: true });
+  fs.writeFileSync(runtimeStorePath(), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  return next;
+}
+
+function isUsableBinary(candidate) {
+  try {
+    return Boolean(candidate && fs.statSync(candidate).isFile());
+  } catch {
+    return false;
+  }
+}
+
 function grokConfigPath() {
   return process.env.GROK_DESKTOP_CONFIG_HOME
     ? path.join(process.env.GROK_DESKTOP_CONFIG_HOME, "config.toml")
@@ -297,7 +327,9 @@ async function probeAllStoredModels(providerId, onProgress) {
 }
 
 function locateGrok() {
+  const customBinary = readRuntimeStore().customBinary;
   const candidates = [
+    customBinary,
     process.env.GROK_BINARY,
     app.isPackaged && path.join(process.resourcesPath, "bin", process.platform === "win32" ? "grok.exe" : "grok"),
     path.join(__dirname, "..", "target", "release", process.platform === "win32" ? "xai-grok-pager.exe" : "xai-grok-pager"),
@@ -308,9 +340,7 @@ function locateGrok() {
   ].filter(Boolean);
 
   for (const candidate of candidates) {
-    try {
-      if (fs.statSync(candidate).isFile()) return candidate;
-    } catch {}
+    if (isUsableBinary(candidate)) return candidate;
   }
 
   const probe = spawnSync(process.platform === "win32" ? "where.exe" : "which", ["grok"], {
@@ -319,7 +349,7 @@ function locateGrok() {
   });
   if (probe.status === 0) {
     const first = probe.stdout.split(/\r?\n/).map((line) => line.trim()).find(Boolean);
-    if (first) return first;
+    if (first && isUsableBinary(first)) return first;
   }
   return null;
 }
@@ -360,9 +390,12 @@ function parseModelList(output) {
 }
 
 function runtimeBase(binary) {
+  const customBinary = readRuntimeStore().customBinary;
   return {
     connected: Boolean(binary),
     binary,
+    customBinary,
+    usingCustomBinary: Boolean(binary && customBinary && path.resolve(binary) === path.resolve(customBinary)),
     version: null,
     models: [],
     defaultModel: null,
@@ -372,6 +405,8 @@ function runtimeBase(binary) {
     defaultCwd: app.isPackaged ? app.getPath("documents") : path.resolve(__dirname, "..")
   };
 }
+
+const RUNTIME_NOT_FOUND = "RUNTIME_NOT_FOUND";
 
 async function runtimeInfo() {
   const binary = locateGrok();
@@ -569,6 +604,27 @@ ipcMain.handle("runtime:info", async () => runtimeInfo());
 
 ipcMain.handle("runtime:models", async () => runtimeModels());
 
+ipcMain.handle("runtime:pick-binary", async () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return { ok: false, errorCode: RUNTIME_NOT_FOUND, error: RUNTIME_NOT_FOUND };
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Select Grok Runtime binary",
+    properties: ["openFile"],
+    filters: process.platform === "win32"
+      ? [{ name: "Executable", extensions: ["exe"] }, { name: "All files", extensions: ["*"] }]
+      : [{ name: "All files", extensions: ["*"] }]
+  });
+  if (result.canceled || !result.filePaths?.[0]) return { ok: false, canceled: true };
+  const binary = result.filePaths[0];
+  if (!isUsableBinary(binary)) return { ok: false, errorCode: "INVALID_BINARY", error: "INVALID_BINARY" };
+  persistRuntimeStore({ customBinary: binary });
+  return { ok: true, info: await runtimeInfo() };
+});
+
+ipcMain.handle("runtime:clear-binary", async () => {
+  persistRuntimeStore({ customBinary: null });
+  return { ok: true, info: await runtimeInfo() };
+});
+
 ipcMain.handle("config:read", () => {
   const config = readNativeConfig(grokConfigPath());
   return { ...config, integrations: integrationSummary(config.raw) };
@@ -610,7 +666,7 @@ ipcMain.handle("auth:info", () => authInfo());
 
 ipcMain.handle("auth:login", async () => {
   const binary = locateGrok();
-  if (!binary) return { ok: false, error: "未检测到 Grok Runtime" };
+  if (!binary) return { ok: false, errorCode: RUNTIME_NOT_FOUND, error: RUNTIME_NOT_FOUND };
   if (activeAuthRun) {
     if (activeAuthUrl) await shell.openExternal(activeAuthUrl);
     return { ok: true, running: true, browserOpened: Boolean(activeAuthUrl) };
@@ -651,7 +707,7 @@ ipcMain.handle("auth:login", async () => {
 
 ipcMain.handle("auth:logout", () => {
   const binary = locateGrok();
-  if (!binary) return { ok: false, error: "未检测到 Grok Runtime" };
+  if (!binary) return { ok: false, errorCode: RUNTIME_NOT_FOUND, error: RUNTIME_NOT_FOUND };
   const result = spawnSync(binary, ["logout"], { encoding: "utf8", windowsHide: true, timeout: 30_000, env: runtimeEnvironment() });
   if (result.error || result.status !== 0) return { ok: false, error: result.error?.message || result.stderr || "退出登录失败" };
   return { ok: true, info: authInfo() };
@@ -850,9 +906,7 @@ ipcMain.handle("workspace:list", async (_event, { cwd, dir = "" }) => {
       .map((entry) => {
         const absolute = path.join(target, entry.name);
         const relative = path.relative(base, absolute).replace(/\\/g, "/");
-        let size = 0;
-        try { if (entry.isFile()) size = fs.statSync(absolute).size; } catch {}
-        return { name: entry.name, path: relative, type: entry.isDirectory() ? "dir" : "file", size };
+        return { name: entry.name, path: relative, type: entry.isDirectory() ? "dir" : "file" };
       })
       .sort((a, b) => Number(a.type === "file") - Number(b.type === "file") || a.name.localeCompare(b.name));
     return { ok: true, dir: relativeRoot.replace(/\\/g, "/") || "", entries };
@@ -894,6 +948,23 @@ ipcMain.handle("workspace:read", async (_event, { cwd, file }) => {
     const buffer = fs.readFileSync(target);
     if (buffer.includes(0)) throw new Error("这是二进制文件");
     return { ok: true, content: buffer.toString("utf8"), size: stat.size };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle("workspace:write", async (_event, { cwd, file, content }) => {
+  if (!validWorkspace(cwd) || typeof file !== "string") return { ok: false, error: "文件路径无效" };
+  if (typeof content !== "string") return { ok: false, error: "文件内容无效" };
+  const target = path.resolve(cwd, file);
+  const relative = path.relative(path.resolve(cwd), target);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) return { ok: false, error: "文件超出工作区" };
+  try {
+    if (Buffer.byteLength(content, "utf8") > 1024 * 1024) throw new Error("文件超过 1 MB，无法保存");
+    if (fs.existsSync(target) && fs.statSync(target).isDirectory()) throw new Error("目标是目录");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, content, "utf8");
+    return { ok: true, size: Buffer.byteLength(content, "utf8") };
   } catch (error) {
     return { ok: false, error: error.message };
   }
@@ -979,7 +1050,7 @@ ipcMain.handle("terminal:run", async (_event, { cwd, command }) => {
 
 ipcMain.handle("grok:prompt", async (_event, payload) => {
   const binary = locateGrok();
-  if (!binary) return { ok: false, error: "Grok runtime was not found. Set GROK_BINARY or install the grok CLI." };
+  if (!binary) return { ok: false, errorCode: RUNTIME_NOT_FOUND, error: RUNTIME_NOT_FOUND };
   if (!payload || typeof payload.prompt !== "string" || !payload.prompt.trim()) {
     return { ok: false, error: "Prompt is empty." };
   }
