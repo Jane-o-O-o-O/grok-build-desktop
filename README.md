@@ -2,112 +2,101 @@
 
 **English | [简体中文](README.zh-CN.md)**
 
-<img src="desktop/build/icon.png" width="112" alt="Grok Build GUI icon" />
+<img src="desktop/build/icon.png" width="112" alt="Grok Build GUI — Grok Desktop AI Coding Agent icon" />
 
 # Grok Build GUI
 
-**An open-source desktop AI coding workspace powered by the native Grok Build runtime**
+### Open-source **Grok Desktop** for the native Grok Build / `grok` AI coding agent
 
-Stable streaming · Native tool execution · Third-party models · Parallel sessions · 59 native settings · English and Chinese
+**Electron AI coding workspace · xAI Grok Build runtime · Streaming tools · MCP · Third-party LLMs · Windows / macOS / Linux**
 
-[![Release](https://img.shields.io/github/v/release/Jane-o-O-o-O/grok-build-gui?display_name=tag&sort=semver&color=13B8A6)](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/latest)
-[![Release Build](https://github.com/Jane-o-O-o-O/grok-build-gui/actions/workflows/release-desktop.yml/badge.svg)](https://github.com/Jane-o-O-o-O/grok-build-gui/actions/workflows/release-desktop.yml)
+Native tool execution · Parallel agent sessions · OpenAI & Anthropic providers · 59 native settings · English & 中文
+
+[![Release](https://img.shields.io/github/v/release/Jane-o-O-o-O/grok-build-desktop?display_name=tag&sort=semver&color=13B8A6)](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/latest)
+[![Stars](https://img.shields.io/github/stars/Jane-o-O-o-O/grok-build-desktop?style=flat&color=F59E0B)](https://github.com/Jane-o-O-o-O/grok-build-desktop/stargazers)
+[![Downloads](https://img.shields.io/github/downloads/Jane-o-O-o-O/grok-build-desktop/total?color=0EA5E9)](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases)
+[![Release Build](https://github.com/Jane-o-O-o-O/grok-build-desktop/actions/workflows/release-desktop.yml/badge.svg)](https://github.com/Jane-o-O-o-O/grok-build-desktop/actions/workflows/release-desktop.yml)
 [![Windows](https://img.shields.io/badge/Windows-Setup%20%2B%20Portable-111827?logo=windows11&logoColor=white)](#download)
 [![macOS](https://img.shields.io/badge/macOS-Intel%20%2B%20Apple%20Silicon-111827?logo=apple&logoColor=white)](#download)
 [![Linux](https://img.shields.io/badge/Linux-AppImage%20%2B%20DEB-111827?logo=linux&logoColor=white)](#download)
 [![Electron](https://img.shields.io/badge/Electron-37-17202A?logo=electron&logoColor=5EE7F7)](desktop/)
-[![Languages](https://img.shields.io/badge/UI-English%20%2F%20中文-0B7A75)](#english-and-chinese-ui--grok-visual-system)
 [![License](https://img.shields.io/badge/License-Apache--2.0-3B82F6)](LICENSE)
 
-[Download v0.1.0](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/tag/v0.1.0) ·
+[⬇ Download v0.1.1](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.1) ·
+[⭐ Star on GitHub](https://github.com/Jane-o-O-o-O/grok-build-desktop) ·
 [Quick Start](#quick-start) ·
-[Feature Map](#feature-map) ·
-[Third-Party Models](#third-party-models-and-tool-compatibility-bridge) ·
-[Development](#development-and-verification)
+[Features](#feature-map) ·
+[Third-Party Models](#third-party-models-and-tool-compatibility-bridge)
 
-<img src="desktop/docs/grok-desktop-dark.png" width="100%" alt="Grok Build GUI desktop workspace" />
+<img src="desktop/docs/grok-desktop-dark.png" width="100%" alt="Grok Build GUI desktop — AI coding agent workspace with streaming tools, terminals, and Git" />
 
 </div>
 
+> Looking for a **Grok Build desktop app**, **Grok GUI**, **xAI Grok coding agent client**, or an **Electron AI coding workspace** that keeps the real `grok` runtime? This is it.
+
 ---
 
-## What This Project Is
+## Why Grok Build GUI
 
-**Grok Build GUI** is a community desktop interface for the native `grok` / Grok Build CLI and TUI runtime. It provides a visual Electron workspace while continuing to use the runtime's original models, sessions, memory, tools, permissions, MCP servers, Skills, Plugins, Hooks, Subagents, and Worktrees.
+| You want… | Grok Build GUI gives you… |
+|---|---|
+| A real **Grok / Grok Build desktop** | Visual Electron UI on top of the native `grok` CLI & TUI runtime |
+| An **AI coding agent**, not a chat wrapper | Shell, files, search, web, edits, MCP, Skills, Plugins, Hooks, Subagents |
+| **Third-party models** that can use tools | OpenAI-compatible & Anthropic discovery + local tool-call bridge |
+| **Parallel local development** | Side agents, persistent terminals, embedded browser, Git in one window |
+| **Local-first** credentials | Runtime, files, and Git stay on your machine; API keys stay out of the Renderer |
 
-It is not a second Agent implementation separated from the CLI, and it is not a web chat page wrapped in Electron:
+**Grok Build GUI** (also searchable as *Grok Build Desktop*, *Grok Desktop GUI*, *grok-build-gui*) is the community desktop client for the open Grok Build AI coding runtime. CLI, TUI, and GUI share the same sessions, Memory, tools, permissions, and `~/.grok/config.toml` — so behavior stays aligned instead of drifting across rewrites.
 
-- Every task is executed by the local `grok` runtime.
-- The desktop app consumes real-time output through `--output-format streaming-json`.
-- Follow-up turns continue the native session through `sessionId` and `--resume`.
-- Tool activity is synchronized from the native session's `updates.jsonl` and `events.jsonl` files.
-- Settings are read from and written directly to `~/.grok/config.toml`.
-- Account state comes from `~/.grok/auth.json`, while OAuth is delegated to `grok login --oauth`.
-- Third-party models are written into native `[model.*]` configuration and used by the same runtime.
+It is **not** a second Agent stack and **not** a web chat page inside Electron:
 
-In one sentence: **Grok Build GUI keeps the native execution engine and gives it a desktop workflow for interaction, parallel tasks, model management, and local development tools.**
+- Every task runs through the local `grok` / Grok Build runtime
+- Live output arrives via `--output-format streaming-json`
+- Multi-turn work continues with native `sessionId` + `--resume`
+- Tool activity mirrors `updates.jsonl` / `events.jsonl`
+- Third-party models land in native `[model.*]` config and the same Agent loop
+
+**One line:** keep the native Grok Build execution engine; get a desktop workflow for chat, tools, parallel tasks, models, and local developer tooling.
 
 ---
 
 ## Highlights
 
-1. **Native runtime instead of a rewritten Agent**
-
-   CLI, TUI, and GUI share the same sessions, Memory, tools, permissions, and advanced integrations, reducing behavioral drift between separate implementations.
-
-2. **The full tool execution process is visible**
-
-   The interface shows more than a final answer. Thinking, Shell, file operations, search, web access, edits, permission events, and lifecycle transitions appear in their real execution order.
-
-3. **Third-party models can do more than chat**
-
-   OpenAI-compatible and Anthropic models are discovered automatically, probed for Tool Calling, and normalized through a local compatibility bridge when their protocol differs from what the runtime expects.
-
-4. **Parallel development in one window**
-
-   Run the main Agent alongside multiple independent side Agents, persistent terminals, and embedded browsers, all within the same project workspace.
-
-5. **Native settings without constant manual TOML editing**
-
-   The settings center exposes 59 typed settings, global search, protected writes, and automatic backups while preserving a full TOML editor for advanced configuration.
-
-6. **Local-first data and credential boundaries**
-
-   Runtime execution, files, Git, and terminal sessions stay local. Account data is redacted before reaching the Renderer, and Provider secrets never enter Renderer storage or native TOML.
-
-7. **A desktop experience designed specifically for Grok Build**
-
-   The app includes English and Chinese interfaces, resizable three-column layout, a Braille-derived Grok mark, Signal Cyan accents, and compact information density for long-running development work.
-
-8. **Release packages for all three desktop platforms**
-
-   One Git tag tests and builds six Windows, macOS, and Linux artifacts and publishes a SHA-256 checksum manifest.
+1. **Native Grok Build runtime** — CLI, TUI, and GUI share sessions, Memory, MCP, Skills, Plugins, Hooks, Subagents, and Worktrees
+2. **Visible AI tool execution** — Thinking, Shell, files, search, web, edits, and permission events in real order
+3. **Third-party LLMs with tools** — OpenAI Compatible & Anthropic probing plus a local compatibility bridge
+4. **Parallel coding workspace** — Main agent + side agents, multi-tab terminals, and embedded browsers
+5. **59 typed native settings** — Searchable UI with protected TOML writes, backups, and a full editor
+6. **Local-first security** — Redacted account data; Provider secrets never enter Renderer storage or TOML
+7. **Built for Grok visuals** — English / 中文 UI, Signal Cyan theme, Braille Grok mark, dense desktop layout
+8. **Cross-platform releases** — Windows Setup/Portable, macOS Intel/Apple Silicon DMG, Linux AppImage/DEB + SHA-256
 
 ---
 
 ## Current Release
 
-Latest public release: **v0.1.0 — First Public Preview**
+Latest public release: **[v0.1.1](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.1)** — provider chat-model management, attachment improvements, and desktop fixes after the first public preview.
 
-| Capability | v0.1.0 |
+| Capability | Status |
 |---|---|
-| Native `grok` runtime integration | ✅ |
+| Native `grok` / Grok Build runtime integration | ✅ |
 | Streaming text, Thinking, and tool lifecycle | ✅ |
 | Native session continuation | ✅ |
 | Tool permission policy selection | ✅ |
 | Third-party model discovery and tool probing | ✅ |
 | OpenAI / Anthropic tool compatibility bridge | ✅ |
+| Per-provider chat model management | ✅ |
 | 65-command Slash picker | ✅ |
 | 59 native Grok settings | ✅ |
 | Instant English / Chinese switching | ✅ |
 | Multiple terminals, browsers, and side Agents | ✅ |
 | Git state, branch creation, and switching | ✅ |
 | Windows Setup / Portable ZIP | ✅ |
-| macOS Intel / Apple Silicon DMG | ✅, unsigned preview builds |
+| macOS Intel / Apple Silicon DMG | ✅ unsigned preview |
 | Linux AppImage / DEB | ✅ |
 | Automated builds and SHA-256 verification | ✅ |
 
-> The desktop package does not currently bundle the Grok runtime. Install the native `grok` CLI first, or point `GROK_BINARY` to a local runtime binary.
+> The desktop package does not bundle the Grok runtime. Install the native `grok` CLI first, or point `GROK_BINARY` to a local runtime binary.
 
 ---
 
@@ -144,30 +133,30 @@ Latest public release: **v0.1.0 — First Public Preview**
 
 ## Download
 
-All packages are built from the same `v0.1.0` tag through GitHub Actions. The release also includes `SHA256SUMS.txt`.
+All packages are built from the same `v0.1.1` tag through GitHub Actions. The release also includes `SHA256SUMS.txt`.
 
 | Platform | Download | Notes |
 |---|---|---|
-| Windows x64 | [Setup.exe](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/Grok-Build-Desktop-0.1.0-Windows-x64-Setup.exe) | Standard installer |
-| Windows x64 | [Portable.zip](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/Grok-Build-Desktop-0.1.0-Windows-x64-Portable.zip) | Extract and run `Grok Build.exe` |
-| macOS Apple Silicon | [arm64.dmg](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/Grok-Build-Desktop-0.1.0-macOS-arm64.dmg) | M-series Macs, unsigned preview |
-| macOS Intel | [x64.dmg](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/Grok-Build-Desktop-0.1.0-macOS-x64.dmg) | Intel Macs, unsigned preview |
-| Linux x64 | [AppImage](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/Grok-Build-Desktop-0.1.0-Linux-x86_64.AppImage) | Portable Linux app |
-| Debian / Ubuntu x64 | [DEB](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/Grok-Build-Desktop-0.1.0-Linux-amd64.deb) | System package |
-| Checksums | [SHA256SUMS.txt](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/SHA256SUMS.txt) | SHA-256 for all six packages |
+| Windows x64 | [Setup.exe](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Windows-x64-Setup.exe) | Standard installer |
+| Windows x64 | [Portable.zip](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Windows-x64-Portable.zip) | Extract and run `Grok Build.exe` |
+| macOS Apple Silicon | [arm64.dmg](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-macOS-arm64.dmg) | M-series Macs, unsigned preview |
+| macOS Intel | [x64.dmg](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-macOS-x64.dmg) | Intel Macs, unsigned preview |
+| Linux x64 | [AppImage](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage) | Portable Linux app |
+| Debian / Ubuntu x64 | [DEB](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Linux-amd64.deb) | System package |
+| Checksums | [SHA256SUMS.txt](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/SHA256SUMS.txt) | SHA-256 for all six packages |
 
-Full release page: <https://github.com/Jane-o-O-o-O/grok-build-gui/releases/tag/v0.1.0>
+Full release page: <https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.1>
 
 ### Linux AppImage
 
 ```bash
-chmod +x Grok-Build-Desktop-0.1.0-Linux-x86_64.AppImage
-./Grok-Build-Desktop-0.1.0-Linux-x86_64.AppImage
+chmod +x Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage
+./Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage
 ```
 
 ### macOS Preview Note
 
-The v0.1.0 DMGs are built automatically but are not yet signed or notarized with an Apple Developer identity. macOS may show a developer verification prompt on first launch. In Finder, right-click the app and choose **Open**.
+The v0.1.1 DMGs are built automatically but are not yet signed or notarized with an Apple Developer identity. macOS may show a developer verification prompt on first launch. In Finder, right-click the app and choose **Open**.
 
 ---
 
@@ -185,8 +174,8 @@ grok models
 Use a package from the release above, or run from source:
 
 ```powershell
-git clone https://github.com/Jane-o-O-o-O/grok-build-gui.git
-cd grok-build-gui/desktop
+git clone https://github.com/Jane-o-O-o-O/grok-build-desktop.git
+cd grok-build-desktop/desktop
 npm install
 npm start
 ```
@@ -608,7 +597,7 @@ The desktop app uses Electron/Chromium to resolve operating-system proxy and PAC
 
 ## English and Chinese UI / Grok Visual System
 
-v0.1.0 includes English and Simplified Chinese interfaces:
+v0.1.1 includes English and Simplified Chinese interfaces:
 
 - Switch instantly from Settings → General.
 - Language preference is saved locally.
@@ -797,7 +786,6 @@ To keep expectations aligned with the current codebase:
 - The GUI displays permission events and selects CLI policy; the runtime still makes the permission decision.
 - Third-party Agent tool support depends on the Provider's tool-calling protocol, and the settings UI reports the probe result.
 - Raw TOML remains the complete configuration path for MCP, Plugins, Skills, Hooks, Agents, and advanced rules.
-- The dynamic workbench label localization fix is currently on `main` after the v0.1.0 package build and is intended for the next patch release.
 
 ---
 
@@ -813,9 +801,13 @@ It covers authentication, keyboard shortcuts, Slash Commands, configuration, the
 
 ---
 
-## Keywords / Discoverability
+## Search Topics
 
-`grok-build` · `grok-build-gui` · `grok` · `xai` · `grok desktop` · `grok tui` · `electron` · `ai coding agent` · `ai agent desktop` · `agent client protocol` · `acp` · `openai compatible` · `anthropic` · `mcp` · `developer tools` · `windows` · `macos` · `linux`
+Useful when searching GitHub, Google, or package indexes:
+
+`grok-build` · `grok-build-desktop` · `grok-build-gui` · `grok desktop` · `grok gui` · `xai grok` · `grok coding agent` · `ai coding agent` · `electron ai agent` · `mcp desktop` · `openai compatible` · `anthropic` · `agent client protocol` · `windows macos linux`
+
+If this project helps your Grok Build workflow, [⭐ star the repo](https://github.com/Jane-o-O-o-O/grok-build-desktop) so more developers can find it.
 
 ---
 

@@ -1,8 +1,8 @@
 {
   "name": "grok-build-desktop",
   "version": "0.1.1",
-  "description": "Grok Build desktop GUI — Electron AI coding workspace for the official grok / Grok Build TUI runtime",
-  "homepage": "https://github.com/Jane-o-O-o-O/grok-build-gui",
+  "description": "Grok Build Desktop GUI — Electron AI coding agent workspace for the native grok / Grok Build runtime",
+  "homepage": "https://github.com/Jane-o-O-o-O/grok-build-desktop",
   "author": {
     "name": "Jane-o-O-o-O",
     "email": "Jane-o-O-o-O@users.noreply.github.com"

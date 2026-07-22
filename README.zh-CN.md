@@ -2,108 +2,97 @@
 
 **[English](README.md) | 简体中文**
 
-<img src="desktop/build/icon.png" width="112" alt="Grok Build GUI icon" />
+<img src="desktop/build/icon.png" width="112" alt="Grok Build GUI — Grok 桌面 AI 编程 Agent 图标" />
 
 # Grok Build GUI
 
-**把原生 Grok Build Runtime 带进桌面的开源 AI 编程工作区**
+### 面向原生 Grok Build / `grok` AI 编程 Agent 的开源 **Grok 桌面端**
 
-稳定流式对话 · 原生工具执行 · 第三方模型 · 多会话并行 · 59 项原生设置 · 中英双语
+**Electron AI 编程工作区 · xAI Grok Build Runtime · 流式工具 · MCP · 第三方大模型 · Windows / macOS / Linux**
 
-[![Release](https://img.shields.io/github/v/release/Jane-o-O-o-O/grok-build-gui?display_name=tag&sort=semver&color=13B8A6)](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/latest)
-[![Release Build](https://github.com/Jane-o-O-o-O/grok-build-gui/actions/workflows/release-desktop.yml/badge.svg)](https://github.com/Jane-o-O-o-O/grok-build-gui/actions/workflows/release-desktop.yml)
+原生工具执行 · 多 Agent 并行 · OpenAI / Anthropic 接入 · 59 项原生设置 · 中英双语
+
+[![Release](https://img.shields.io/github/v/release/Jane-o-O-o-O/grok-build-desktop?display_name=tag&sort=semver&color=13B8A6)](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/latest)
+[![Stars](https://img.shields.io/github/stars/Jane-o-O-o-O/grok-build-desktop?style=flat&color=F59E0B)](https://github.com/Jane-o-O-o-O/grok-build-desktop/stargazers)
+[![Downloads](https://img.shields.io/github/downloads/Jane-o-O-o-O/grok-build-desktop/total?color=0EA5E9)](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases)
+[![Release Build](https://github.com/Jane-o-O-o-O/grok-build-desktop/actions/workflows/release-desktop.yml/badge.svg)](https://github.com/Jane-o-O-o-O/grok-build-desktop/actions/workflows/release-desktop.yml)
 [![Windows](https://img.shields.io/badge/Windows-Setup%20%2B%20Portable-111827?logo=windows11&logoColor=white)](#下载安装)
 [![macOS](https://img.shields.io/badge/macOS-Intel%20%2B%20Apple%20Silicon-111827?logo=apple&logoColor=white)](#下载安装)
 [![Linux](https://img.shields.io/badge/Linux-AppImage%20%2B%20DEB-111827?logo=linux&logoColor=white)](#下载安装)
 [![Electron](https://img.shields.io/badge/Electron-37-17202A?logo=electron&logoColor=5EE7F7)](desktop/)
-[![Languages](https://img.shields.io/badge/UI-中文%20%2F%20English-0B7A75)](#中英文界面与-grok-视觉)
 [![License](https://img.shields.io/badge/License-Apache--2.0-3B82F6)](LICENSE)
 
-[下载 v0.1.0](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/tag/v0.1.0) ·
+[⬇ 下载 v0.1.1](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.1) ·
+[⭐ Star 本仓库](https://github.com/Jane-o-O-o-O/grok-build-desktop) ·
 [快速开始](#快速开始) ·
 [完整功能](#功能全景) ·
-[第三方模型](#第三方模型与工具兼容桥) ·
-[开发验证](#开发与验证)
+[第三方模型](#第三方模型与工具兼容桥)
 
-<img src="desktop/docs/grok-desktop-dark.png" width="100%" alt="Grok Build GUI desktop workspace" />
+<img src="desktop/docs/grok-desktop-dark.png" width="100%" alt="Grok Build GUI 桌面端 — 流式工具、终端与 Git 的 AI 编程工作区" />
 
 </div>
 
+> 在找 **Grok Build 桌面版**、**Grok GUI**、**xAI Grok 编程 Agent 客户端**，或能保留真实 `grok` Runtime 的 **Electron AI 编程工作区**？就是这个项目。
+
 ---
 
-## 项目定位
+## 为什么选 Grok Build GUI
 
-**Grok Build GUI** 是面向原生 `grok` / Grok Build CLI·TUI Runtime 的社区桌面 GUI。它用 Electron 提供一套可视化 AI 编程工作区，同时继续使用原生 Runtime 的模型、会话、记忆、工具、权限、MCP、Skills、Plugins、Hooks、Subagents 与 Worktree 能力。
+| 你的需求 | Grok Build GUI 提供 |
+|---|---|
+| 真正的 **Grok / Grok Build 桌面端** | 在原生 `grok` CLI · TUI Runtime 之上的 Electron 可视化界面 |
+| **AI 编程 Agent**，不是聊天壳 | Shell、文件、搜索、网页、编辑、MCP、Skills、Plugins、Hooks、Subagents |
+| **第三方模型也能用工具** | OpenAI Compatible / Anthropic 发现 + 本地工具调用兼容桥 |
+| **本地并行开发** | 侧边 Agent、持久终端、内嵌浏览器、Git 同窗并行 |
+| **本地优先** 的凭据边界 | Runtime、文件与 Git 留在本机；API Key 不进 Renderer |
 
-它不是另一套与 CLI 分离的 Agent 实现，也不是把网页聊天窗口简单包进 Electron：
+**Grok Build GUI**（也可搜 *Grok Build Desktop*、*Grok 桌面 GUI*、*grok-build-gui*）是面向开放 Grok Build AI 编程 Runtime 的社区桌面客户端。CLI、TUI、GUI 共享同一套会话、Memory、工具、权限与 `~/.grok/config.toml`，避免两套实现逐渐分叉。
 
-- 每次任务都由本机 `grok` Runtime 执行；
-- 桌面端通过 `--output-format streaming-json` 接收实时输出；
-- 后续对话通过原生 `sessionId` 和 `--resume` 继续；
-- 工具活动来自原生 Session 的 `updates.jsonl` 与 `events.jsonl`；
-- 设置直接读写 `~/.grok/config.toml`；
-- 登录状态来自 `~/.grok/auth.json`，OAuth 交给 `grok login --oauth`；
-- 第三方模型最终写入原生 `[model.*]` 配置，仍由同一 Runtime 调用。
+它不是另一套与 CLI 分离的 Agent，也不是把网页聊天简单包进 Electron：
 
-一句话概括：**保留 Grok Build 的原生执行内核，把交互、并行任务、模型管理和本地开发工具桌面化。**
+- 每次任务都由本机 `grok` / Grok Build Runtime 执行
+- 通过 `--output-format streaming-json` 接收实时输出
+- 多轮对话用原生 `sessionId` + `--resume` 续接
+- 工具活动同步自 `updates.jsonl` / `events.jsonl`
+- 第三方模型写入原生 `[model.*]`，仍走同一套 Agent 工具链
+
+**一句话：** 保留 Grok Build 原生执行内核，把对话、工具、并行任务、模型管理和本地开发工具做成桌面工作流。
 
 ---
 
 ## 项目亮点
 
-1. **不是重写 Agent，而是复用原生 Runtime**
-
-   CLI、TUI 和 GUI 共享同一套会话、Memory、工具、权限和高级集成，减少两套实现逐渐分叉的问题。
-
-2. **工具执行过程真正可见**
-
-   不只显示最终回复，还把 Thinking、Shell、文件、搜索、网页、编辑、权限和生命周期事件放回真实消息顺序中。
-
-3. **第三方模型不止“能聊天”**
-
-   自动发现 OpenAI / Anthropic 模型，主动探测 Tool Calling，并通过本地兼容桥修复常见协议差异，让兼容模型进入原生 Agent 工具链。
-
-4. **一个窗口完成并行开发**
-
-   主 Agent 之外，可以同时打开多个独立侧边 Agent、持久终端和内嵌浏览器，并在同一项目上下文中并行推进任务。
-
-5. **原生设置不再依赖手改 TOML**
-
-   59 项类型化设置、全局搜索、配置保护、自动备份，同时保留完整 TOML 入口，不牺牲高级能力。
-
-6. **本地优先的数据与凭据边界**
-
-   Runtime、本地文件、Git 和终端均在本机运行；账号数据先脱敏，Provider 密钥不进入 Renderer 或原生 TOML。
-
-7. **为 Grok Build 重新设计的桌面体验**
-
-   中英文界面、可调整三栏布局、Braille Grok 标志、Signal Cyan 视觉和针对长时间开发任务优化的紧凑信息密度。
-
-8. **发布即覆盖三大桌面平台**
-
-   同一 Tag 自动测试并构建 Windows、macOS、Linux 六种安装包，附带 SHA-256 校验清单。
+1. **原生 Grok Build Runtime** — CLI / TUI / GUI 共享会话、Memory、MCP、Skills、Plugins、Hooks、Subagents、Worktree
+2. **工具执行过程真正可见** — Thinking、Shell、文件、搜索、网页、编辑与权限事件按真实顺序展示
+3. **第三方大模型可进工具链** — OpenAI Compatible / Anthropic 探测 + 本地兼容桥
+4. **并行编程工作区** — 主 Agent + 侧边 Agent、多标签终端、内嵌浏览器
+5. **59 项类型化原生设置** — 可搜索 UI、受保护 TOML 写入、自动备份与完整编辑器
+6. **本地优先安全边界** — 账号脱敏；Provider 密钥不进 Renderer 或 TOML
+7. **为 Grok 设计的桌面体验** — 中英文、Signal Cyan、Braille Grok 标志、紧凑信息密度
+8. **三大平台安装包** — Windows Setup/Portable、macOS Intel/Apple Silicon DMG、Linux AppImage/DEB + SHA-256
 
 ---
 
 ## 当前版本
 
-当前公开版本：**v0.1.0 — First Public Preview**
+当前公开版本：**[v0.1.1](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.1)** — 在首个公开预览之后，补强 Provider 对话模型管理、附件流程与若干桌面修复。
 
-| 能力 | v0.1.0 状态 |
+| 能力 | 状态 |
 |---|---|
-| 原生 `grok` Runtime 接入 | ✅ |
+| 原生 `grok` / Grok Build Runtime 接入 | ✅ |
 | 流式文本、Thinking 与工具生命周期 | ✅ |
 | 原生 Session 续接 | ✅ |
 | 工具权限策略选择 | ✅ |
 | 第三方模型发现与工具能力探测 | ✅ |
 | OpenAI / Anthropic 工具兼容桥 | ✅ |
+| 按 Provider 管理对话模型 | ✅ |
 | 65 项 Slash 命令选择器 | ✅ |
 | 59 项原生 Grok 设置 | ✅ |
 | 中英文界面即时切换 | ✅ |
 | 多终端、多浏览器、多侧边 Agent | ✅ |
 | Git 分支状态、创建与切换 | ✅ |
 | Windows Setup / Portable ZIP | ✅ |
-| macOS Intel / Apple Silicon DMG | ✅，当前为未签名预览包 |
+| macOS Intel / Apple Silicon DMG | ✅ 未签名预览包 |
 | Linux AppImage / DEB | ✅ |
 | 自动构建与 SHA-256 校验 | ✅ |
 
@@ -144,30 +133,30 @@
 
 ## 下载安装
 
-所有安装包均由同一个 `v0.1.0` Tag 通过 GitHub Actions 构建，并在 Release 中提供 `SHA256SUMS.txt`。
+所有安装包均由同一个 `v0.1.1` Tag 通过 GitHub Actions 构建，并在 Release 中提供 `SHA256SUMS.txt`。
 
 | 平台 | 下载 | 说明 |
 |---|---|---|
-| Windows x64 | [Setup.exe](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/Grok-Build-Desktop-0.1.0-Windows-x64-Setup.exe) | 标准安装版 |
-| Windows x64 | [Portable.zip](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/Grok-Build-Desktop-0.1.0-Windows-x64-Portable.zip) | 解压后运行 `Grok Build.exe` |
-| macOS Apple Silicon | [arm64.dmg](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/Grok-Build-Desktop-0.1.0-macOS-arm64.dmg) | M1/M2/M3/M4 系列，未签名预览包 |
-| macOS Intel | [x64.dmg](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/Grok-Build-Desktop-0.1.0-macOS-x64.dmg) | Intel Mac，未签名预览包 |
-| Linux x64 | [AppImage](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/Grok-Build-Desktop-0.1.0-Linux-x86_64.AppImage) | 便携运行 |
-| Debian / Ubuntu x64 | [DEB](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/Grok-Build-Desktop-0.1.0-Linux-amd64.deb) | 系统安装包 |
-| 文件校验 | [SHA256SUMS.txt](https://github.com/Jane-o-O-o-O/grok-build-gui/releases/download/v0.1.0/SHA256SUMS.txt) | 六个平台包的 SHA-256 |
+| Windows x64 | [Setup.exe](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Windows-x64-Setup.exe) | 标准安装版 |
+| Windows x64 | [Portable.zip](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Windows-x64-Portable.zip) | 解压后运行 `Grok Build.exe` |
+| macOS Apple Silicon | [arm64.dmg](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-macOS-arm64.dmg) | M1/M2/M3/M4 系列，未签名预览包 |
+| macOS Intel | [x64.dmg](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-macOS-x64.dmg) | Intel Mac，未签名预览包 |
+| Linux x64 | [AppImage](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage) | 便携运行 |
+| Debian / Ubuntu x64 | [DEB](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Linux-amd64.deb) | 系统安装包 |
+| 文件校验 | [SHA256SUMS.txt](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/SHA256SUMS.txt) | 六个平台包的 SHA-256 |
 
-完整发布页：<https://github.com/Jane-o-O-o-O/grok-build-gui/releases/tag/v0.1.0>
+完整发布页：<https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.1>
 
 ### Linux AppImage
 
 ```bash
-chmod +x Grok-Build-Desktop-0.1.0-Linux-x86_64.AppImage
-./Grok-Build-Desktop-0.1.0-Linux-x86_64.AppImage
+chmod +x Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage
+./Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage
 ```
 
 ### macOS 预览包说明
 
-v0.1.0 的 DMG 已完成自动构建，但尚未接入 Apple Developer 签名与公证。首次打开时 macOS 可能显示开发者验证提示，可在 Finder 中右键应用并选择“打开”。
+v0.1.1 的 DMG 已完成自动构建，但尚未接入 Apple Developer 签名与公证。首次打开时 macOS 可能显示开发者验证提示，可在 Finder 中右键应用并选择“打开”。
 
 ---
 
@@ -185,8 +174,8 @@ grok models
 直接使用上方 Release 安装包，或从源码启动：
 
 ```powershell
-git clone https://github.com/Jane-o-O-o-O/grok-build-gui.git
-cd grok-build-gui/desktop
+git clone https://github.com/Jane-o-O-o-O/grok-build-desktop.git
+cd grok-build-desktop/desktop
 npm install
 npm start
 ```
@@ -608,7 +597,7 @@ grok logout
 
 ## 中英文界面与 Grok 视觉
 
-v0.1.0 新增中文 / English UI：
+v0.1.1 提供中文 / English UI：
 
 - 设置 → 常规中即时切换；
 - 语言选择保存在本机状态；
@@ -788,7 +777,7 @@ desktop/dist/win-unpacked/Grok Build.exe
 
 ## 当前边界
 
-为了让功能预期与 v0.1.0 保持一致：
+为了让功能预期与当前代码保持一致：
 
 - 桌面应用依赖本机 Grok Runtime，Release 暂未捆绑 CLI；
 - Windows 是当前主要人工验证平台；macOS/Linux 已通过自动构建流水线产出安装包；
@@ -797,7 +786,6 @@ desktop/dist/win-unpacked/Grok Build.exe
 - GUI 展示权限事件并设置 CLI 策略，权限结论仍由 Runtime 决定；
 - 第三方模型是否能执行 Agent 工具取决于其工具调用协议，设置页会显示探测结果；
 - 原始 TOML 仍是 MCP、Plugins、Skills、Hooks、Agents 和高级规则的完整配置入口。
-- 动态工作台标签的本地化修复当前位于 `main`，晚于 v0.1.0 安装包构建，将进入下一个补丁版本。
 
 ---
 
@@ -813,9 +801,13 @@ crates/codegen/xai-grok-pager/docs/user-guide/
 
 ---
 
-## Keywords / Discoverability
+## 搜索关键词
 
-`grok-build` · `grok-build-gui` · `grok` · `xai` · `grok desktop` · `grok tui` · `electron` · `ai coding agent` · `ai agent desktop` · `agent client protocol` · `acp` · `openai compatible` · `anthropic` · `mcp` · `developer tools` · `windows` · `macos` · `linux`
+在 GitHub、搜索引擎或包索引里可以用这些词找到本项目：
+
+`grok-build` · `grok-build-desktop` · `grok-build-gui` · `grok 桌面` · `grok gui` · `xai grok` · `grok 编程 agent` · `ai coding agent` · `electron ai agent` · `mcp 桌面` · `openai compatible` · `anthropic` · `agent client protocol` · `windows macos linux`
+
+如果这个项目对你的 Grok Build 工作流有帮助，欢迎 [⭐ Star 仓库](https://github.com/Jane-o-O-o-O/grok-build-desktop)，让更多开发者搜到它。
 
 ---
 
