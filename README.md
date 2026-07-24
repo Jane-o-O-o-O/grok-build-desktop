@@ -22,7 +22,7 @@ Native tool execution · Parallel agent sessions · OpenAI & Anthropic providers
 [![Electron](https://img.shields.io/badge/Electron-37-17202A?logo=electron&logoColor=5EE7F7)](desktop/)
 [![License](https://img.shields.io/badge/License-Apache--2.0-3B82F6)](LICENSE)
 
-[⬇ Download v0.1.1](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.1) ·
+[⬇ Download v0.1.2](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.2) ·
 [⭐ Star on GitHub](https://github.com/Jane-o-O-o-O/grok-build-desktop) ·
 [Quick Start](#quick-start) ·
 [Features](#feature-map) ·
@@ -75,7 +75,7 @@ It is **not** a second Agent stack and **not** a web chat page inside Electron:
 
 ## Current Release
 
-Latest public release: **[v0.1.1](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.1)** — provider chat-model management, attachment improvements, and desktop fixes after the first public preview.
+Latest public release: **[v0.1.2](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.2)** — slash honesty, toast severity, thread tidy, i18n cleanup, browser teardown, and Files/Runtime/Browser polish.
 
 | Capability | Status |
 |---|---|
@@ -86,7 +86,7 @@ Latest public release: **[v0.1.1](https://github.com/Jane-o-O-o-O/grok-build-des
 | Third-party model discovery and tool probing | ✅ |
 | OpenAI / Anthropic tool compatibility bridge | ✅ |
 | Per-provider chat model management | ✅ |
-| 65-command Slash picker | ✅ |
+| Curated Slash picker | ✅ |
 | 59 native Grok settings | ✅ |
 | Instant English / Chinese switching | ✅ |
 | Multiple terminals, browsers, and side Agents | ✅ |
@@ -105,7 +105,7 @@ Latest public release: **[v0.1.1](https://github.com/Jane-o-O-o-O/grok-build-des
 <table>
   <tr>
     <td width="50%"><strong>Native tool execution and parallel side task</strong><br><br><img src="desktop/docs/tool-execution.png" alt="Native tool execution and parallel side task" /></td>
-    <td width="50%"><strong>65-command Slash picker</strong><br><br><img src="desktop/docs/slash-commands.png" alt="Slash command picker" /></td>
+    <td width="50%"><strong>Curated Slash picker</strong><br><br><img src="desktop/docs/slash-commands.png" alt="Slash command picker" /></td>
   </tr>
   <tr>
     <td width="50%"><strong>Third-party models and tool capability</strong><br><br><img src="desktop/docs/provider-models.png" alt="Third-party model providers and tool capability" /></td>
@@ -133,30 +133,30 @@ Latest public release: **[v0.1.1](https://github.com/Jane-o-O-o-O/grok-build-des
 
 ## Download
 
-All packages are built from the same `v0.1.1` tag through GitHub Actions. The release also includes `SHA256SUMS.txt`.
+All packages are built from the same `v0.1.2` tag through GitHub Actions. The release also includes `SHA256SUMS.txt`.
 
 | Platform | Download | Notes |
 |---|---|---|
-| Windows x64 | [Setup.exe](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Windows-x64-Setup.exe) | Standard installer |
-| Windows x64 | [Portable.zip](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Windows-x64-Portable.zip) | Extract and run `Grok Build.exe` |
-| macOS Apple Silicon | [arm64.dmg](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-macOS-arm64.dmg) | M-series Macs, unsigned preview |
-| macOS Intel | [x64.dmg](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-macOS-x64.dmg) | Intel Macs, unsigned preview |
-| Linux x64 | [AppImage](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage) | Portable Linux app |
-| Debian / Ubuntu x64 | [DEB](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Linux-amd64.deb) | System package |
-| Checksums | [SHA256SUMS.txt](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/SHA256SUMS.txt) | SHA-256 for all six packages |
+| Windows x64 | [Setup.exe](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/Grok-Build-Desktop-0.1.2-Windows-x64-Setup.exe) | Standard installer |
+| Windows x64 | [Portable.zip](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/Grok-Build-Desktop-0.1.2-Windows-x64-Portable.zip) | Extract and run `Grok Build.exe` |
+| macOS Apple Silicon | [arm64.dmg](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/Grok-Build-Desktop-0.1.2-macOS-arm64.dmg) | M-series Macs, unsigned preview |
+| macOS Intel | [x64.dmg](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/Grok-Build-Desktop-0.1.2-macOS-x64.dmg) | Intel Macs, unsigned preview |
+| Linux x64 | [AppImage](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/Grok-Build-Desktop-0.1.2-Linux-x86_64.AppImage) | Portable Linux app |
+| Debian / Ubuntu x64 | [DEB](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/Grok-Build-Desktop-0.1.2-Linux-amd64.deb) | System package |
+| Checksums | [SHA256SUMS.txt](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/SHA256SUMS.txt) | SHA-256 for all six packages |
 
-Full release page: <https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.1>
+Full release page: <https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.2>
 
 ### Linux AppImage
 
 ```bash
-chmod +x Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage
-./Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage
+chmod +x Grok-Build-Desktop-0.1.2-Linux-x86_64.AppImage
+./Grok-Build-Desktop-0.1.2-Linux-x86_64.AppImage
 ```
 
 ### macOS Preview Note
 
-The v0.1.1 DMGs are built automatically but are not yet signed or notarized with an Apple Developer identity. On first launch macOS Gatekeeper may block the app.
+The v0.1.2 DMGs are built automatically but are not yet signed or notarized with an Apple Developer identity. On first launch macOS Gatekeeper may block the app.
 
 1. Open **Finder** and locate **Grok Build**.
 2. Control-click (right-click) the app and choose **Open**.
@@ -619,7 +619,7 @@ The desktop app uses Electron/Chromium to resolve operating-system proxy and PAC
 
 ## English and Chinese UI / Grok Visual System
 
-v0.1.1 includes English and Simplified Chinese interfaces:
+v0.1.2 includes English and Simplified Chinese interfaces:
 
 - Switch instantly from Settings → General.
 - Language preference is saved locally.

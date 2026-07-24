@@ -22,7 +22,7 @@
 [![Electron](https://img.shields.io/badge/Electron-37-17202A?logo=electron&logoColor=5EE7F7)](desktop/)
 [![License](https://img.shields.io/badge/License-Apache--2.0-3B82F6)](LICENSE)
 
-[⬇ 下载 v0.1.1](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.1) ·
+[⬇ 下载 v0.1.2](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.2) ·
 [⭐ Star 本仓库](https://github.com/Jane-o-O-o-O/grok-build-desktop) ·
 [快速开始](#快速开始) ·
 [完整功能](#功能全景) ·
@@ -75,7 +75,7 @@
 
 ## 当前版本
 
-当前公开版本：**[v0.1.1](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.1)** — 在首个公开预览之后，补强 Provider 对话模型管理、附件流程与若干桌面修复。
+当前公开版本：**[v0.1.2](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.2)** — 补强 Slash 诚实性、Toast、任务整理、中英文本地化，以及 Files / Runtime / Browser 体验。
 
 | 能力 | 状态 |
 |---|---|
@@ -86,7 +86,7 @@
 | 第三方模型发现与工具能力探测 | ✅ |
 | OpenAI / Anthropic 工具兼容桥 | ✅ |
 | 按 Provider 管理对话模型 | ✅ |
-| 65 项 Slash 命令选择器 | ✅ |
+| 精选 Slash 命令选择器 | ✅ |
 | 59 项原生 Grok 设置 | ✅ |
 | 中英文界面即时切换 | ✅ |
 | 多终端、多浏览器、多侧边 Agent | ✅ |
@@ -105,7 +105,7 @@
 <table>
   <tr>
     <td width="50%"><strong>原生工具执行与并行侧边任务</strong><br><br><img src="desktop/docs/tool-execution.png" alt="Native tool execution and parallel side task" /></td>
-    <td width="50%"><strong>65 项 Slash 命令选择器</strong><br><br><img src="desktop/docs/slash-commands.png" alt="Slash command picker" /></td>
+    <td width="50%"><strong>精选 Slash 命令选择器</strong><br><br><img src="desktop/docs/slash-commands.png" alt="Slash command picker" /></td>
   </tr>
   <tr>
     <td width="50%"><strong>第三方模型与工具能力</strong><br><br><img src="desktop/docs/provider-models.png" alt="Third-party model providers and tool capability" /></td>
@@ -133,30 +133,30 @@
 
 ## 下载安装
 
-所有安装包均由同一个 `v0.1.1` Tag 通过 GitHub Actions 构建，并在 Release 中提供 `SHA256SUMS.txt`。
+所有安装包均由同一个 `v0.1.2` Tag 通过 GitHub Actions 构建，并在 Release 中提供 `SHA256SUMS.txt`。
 
 | 平台 | 下载 | 说明 |
 |---|---|---|
-| Windows x64 | [Setup.exe](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Windows-x64-Setup.exe) | 标准安装版 |
-| Windows x64 | [Portable.zip](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Windows-x64-Portable.zip) | 解压后运行 `Grok Build.exe` |
-| macOS Apple Silicon | [arm64.dmg](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-macOS-arm64.dmg) | M1/M2/M3/M4 系列，未签名预览包 |
-| macOS Intel | [x64.dmg](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-macOS-x64.dmg) | Intel Mac，未签名预览包 |
-| Linux x64 | [AppImage](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage) | 便携运行 |
-| Debian / Ubuntu x64 | [DEB](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/Grok-Build-Desktop-0.1.1-Linux-amd64.deb) | 系统安装包 |
-| 文件校验 | [SHA256SUMS.txt](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.1/SHA256SUMS.txt) | 六个平台包的 SHA-256 |
+| Windows x64 | [Setup.exe](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/Grok-Build-Desktop-0.1.2-Windows-x64-Setup.exe) | 标准安装版 |
+| Windows x64 | [Portable.zip](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/Grok-Build-Desktop-0.1.2-Windows-x64-Portable.zip) | 解压后运行 `Grok Build.exe` |
+| macOS Apple Silicon | [arm64.dmg](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/Grok-Build-Desktop-0.1.2-macOS-arm64.dmg) | M1/M2/M3/M4 系列，未签名预览包 |
+| macOS Intel | [x64.dmg](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/Grok-Build-Desktop-0.1.2-macOS-x64.dmg) | Intel Mac，未签名预览包 |
+| Linux x64 | [AppImage](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/Grok-Build-Desktop-0.1.2-Linux-x86_64.AppImage) | 便携运行 |
+| Debian / Ubuntu x64 | [DEB](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/Grok-Build-Desktop-0.1.2-Linux-amd64.deb) | 系统安装包 |
+| 文件校验 | [SHA256SUMS.txt](https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/download/v0.1.2/SHA256SUMS.txt) | 六个平台包的 SHA-256 |
 
-完整发布页：<https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.1>
+完整发布页：<https://github.com/Jane-o-O-o-O/grok-build-desktop/releases/tag/v0.1.2>
 
 ### Linux AppImage
 
 ```bash
-chmod +x Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage
-./Grok-Build-Desktop-0.1.1-Linux-x86_64.AppImage
+chmod +x Grok-Build-Desktop-0.1.2-Linux-x86_64.AppImage
+./Grok-Build-Desktop-0.1.2-Linux-x86_64.AppImage
 ```
 
 ### macOS 预览包说明
 
-v0.1.1 的 DMG 已完成自动构建，但尚未接入 Apple Developer 签名与公证。首次打开时 macOS Gatekeeper 可能会拦截。
+v0.1.2 的 DMG 已完成自动构建，但尚未接入 Apple Developer 签名与公证。首次打开时 macOS Gatekeeper 可能会拦截。
 
 1. 打开 **Finder**，找到 **Grok Build**。
 2. 按住 Control 点击（或右键）应用，选择 **打开**。
@@ -345,7 +345,7 @@ events.jsonl
 
 ---
 
-## Composer、模型与 65 项 Slash 命令
+## Composer、模型与 Slash 命令
 
 Composer 提供：
 
@@ -359,7 +359,7 @@ Composer 提供：
 - 生成停止按钮；
 - Slash 命令搜索与键盘选择。
 
-输入 `/` 后会出现包含 **65 项命令** 的选择器，支持别名搜索、上下方向键、`Enter` / `Tab` 选择和 `Escape` 关闭。
+输入 `/` 后会出现只展示桌面端已接入命令的选择器，支持别名搜索、上下方向键、`Enter` / `Tab` 选择和 `Escape` 关闭。
 
 桌面端可以直接处理 `/new`、`/model`、`/effort`、`/settings`、`/theme`、`/login`、`/logout`、`/cd`、`/copy`、`/tasks` 等界面命令；其余命令会填入 Composer，再交给原生 Runtime 执行，例如：
 
@@ -619,7 +619,7 @@ grok logout
 
 ## 中英文界面与 Grok 视觉
 
-v0.1.1 提供中文 / English UI：
+v0.1.2 提供中文 / English UI：
 
 - 设置 → 常规中即时切换；
 - 语言选择保存在本机状态；

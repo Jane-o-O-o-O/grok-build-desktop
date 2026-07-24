@@ -160,71 +160,35 @@
   };
 
   const slashCommands = [
-    { id: "help", label: "/help", description: "浏览命令与快捷键", aliases: [] },
-    { id: "docs", label: "/docs", description: "打开使用指南或在线文档", aliases: ["/howto", "/guides"] },
-    { id: "new", label: "/new", description: "开始新会话", aliases: ["/clear"] },
-    { id: "home", label: "/home", description: "返回欢迎页", aliases: ["/welcome"] },
-    { id: "fork", label: "/fork", description: "从当前会话分叉并行 Agent", aliases: [] },
-    { id: "compact", label: "/compact", description: "压缩对话历史", aliases: [] },
-    { id: "copy", label: "/copy", description: "复制最近一条回复", aliases: [] },
-    { id: "find", label: "/find", description: "搜索对话滚动历史", aliases: [] },
-    { id: "history", label: "/history", description: "搜索提示历史", aliases: [] },
-    { id: "export", label: "/export", description: "导出当前对话", aliases: [] },
-    { id: "transcript", label: "/transcript", description: "查看完整对话记录", aliases: ["/log"] },
-    { id: "expand", label: "/expand", description: "展开最近折叠块", aliases: [] },
-    { id: "context", label: "/context", description: "查看上下文占用", aliases: [] },
-    { id: "model", label: "/model", description: "切换活动模型", aliases: ["/m"] },
-    { id: "effort", label: "/effort", description: "设置推理力度", aliases: [] },
-    { id: "always-approve", label: "/always-approve", description: "切换始终批准工具", aliases: ["/yolo"] },
-    { id: "auto", label: "/auto", description: "切换自动审批模式", aliases: [] },
-    { id: "multiline", label: "/multiline", description: "切换多行输入", aliases: ["/ml"] },
-    { id: "compact-mode", label: "/compact-mode", description: "切换紧凑界面", aliases: [] },
-    { id: "vim-mode", label: "/vim-mode", description: "切换 Vim 滚动快捷键", aliases: [] },
-    { id: "hooks", label: "/hooks", description: "查看 Hooks", aliases: [] },
-    { id: "plugins", label: "/plugins", description: "查看 Plugins", aliases: [] },
-    { id: "marketplace", label: "/marketplace", description: "打开 Marketplace", aliases: [] },
-    { id: "skills", label: "/skills", description: "查看 Skills", aliases: [] },
-    { id: "share", label: "/share", description: "分享当前会话", aliases: [] },
-    { id: "session-info", label: "/session-info", description: "显示会话信息", aliases: ["/status", "/info"] },
-    { id: "rename", label: "/rename", description: "重命名当前会话", aliases: ["/title"] },
-    { id: "dashboard", label: "/dashboard", description: "打开 Agent Dashboard", aliases: ["/agents-dashboard", "/sessions"] },
-    { id: "cd", label: "/cd", description: "切换工作区目录", aliases: [] },
-    { id: "theme", label: "/theme", description: "切换桌面主题", aliases: ["/t"] },
-    { id: "feedback", label: "/feedback", description: "发送反馈", aliases: [] },
-    { id: "announcements", label: "/announcements", description: "显示或隐藏公告", aliases: [] },
-    { id: "remember", label: "/remember", description: "保存一条记忆", aliases: [] },
-    { id: "plan", label: "/plan", description: "进入计划模式", aliases: [] },
-    { id: "view-plan", label: "/view-plan", description: "查看当前计划", aliases: ["/show-plan", "/plan-view"] },
-    { id: "resume", label: "/resume", description: "恢复历史会话", aliases: [] },
-    { id: "mcps", label: "/mcps", description: "查看 MCP 状态", aliases: [] },
-    { id: "btw", label: "/btw", description: "旁路提问，不打断主任务", aliases: [] },
-    { id: "recap", label: "/recap", description: "总结当前会话", aliases: [] },
-    { id: "terminal-setup", label: "/terminal-setup", description: "检查终端与剪贴板设置", aliases: ["/terminal-check", "/terminal-info"] },
-    { id: "voice", label: "/voice", description: "切换语音输入", aliases: [] },
-    { id: "loop", label: "/loop", description: "按间隔循环执行提示", aliases: [] },
-    { id: "imagine", label: "/imagine", description: "根据描述生成图片", aliases: [] },
-    { id: "imagine-video", label: "/imagine-video", description: "根据描述生成视频", aliases: [] },
-    { id: "timestamps", label: "/timestamps", description: "切换消息时间戳", aliases: [] },
-    { id: "settings", label: "/settings", description: "打开设置", aliases: ["/config", "/preferences", "/prefs"] },
-    { id: "privacy", label: "/privacy", description: "隐私与数据设置", aliases: [] },
-    { id: "rewind", label: "/rewind", description: "回退到之前的轮次", aliases: [] },
-    { id: "login", label: "/login", description: "登录 Grok 账号", aliases: [] },
-    { id: "logout", label: "/logout", description: "退出登录", aliases: [] },
-    { id: "import-claude", label: "/import-claude", description: "导入 Claude 设置", aliases: [] },
-    { id: "usage", label: "/usage", description: "查看用量或账单", aliases: ["/cost"] },
-    { id: "queue", label: "/queue", description: "查看排队中的提示", aliases: [] },
-    { id: "tasks", label: "/tasks", description: "查看后台任务与子 Agent", aliases: [] },
-    { id: "release-notes", label: "/release-notes", description: "查看版本说明", aliases: ["/changelog"] },
-    { id: "config-agents", label: "/config-agents", description: "管理 Agent 定义", aliases: ["/agents"] },
-    { id: "personas", label: "/personas", description: "管理 Personas", aliases: [] },
-    { id: "flush", label: "/flush", description: "立即将记忆写入磁盘", aliases: [] },
-    { id: "dream", label: "/dream", description: "运行记忆整理", aliases: [] },
-    { id: "memory", label: "/memory", description: "浏览和管理记忆", aliases: ["/mem"] },
-    { id: "goal", label: "/goal", description: "设置或检查自主目标", aliases: [] },
-    { id: "create-skill", label: "/create-skill", description: "创建新的 Grok Skill", aliases: [] },
-    { id: "code-review", label: "/code-review", description: "严格可维护性代码审阅", aliases: [] },
-    { id: "check-work", label: "/check-work", description: "用子 Agent 校验改动", aliases: [] },
-    { id: "quit", label: "/quit", description: "退出应用", aliases: ["/exit"] }
+    { id: "help", label: "/help", descKey: "slash.help", aliases: [] },
+    { id: "docs", label: "/docs", descKey: "slash.docs", aliases: ["/howto", "/guides"] },
+    { id: "new", label: "/new", descKey: "slash.new", aliases: ["/clear"] },
+    { id: "home", label: "/home", descKey: "slash.home", aliases: ["/welcome"] },
+    { id: "copy", label: "/copy", descKey: "slash.copy", aliases: [] },
+    { id: "find", label: "/find", descKey: "slash.find", aliases: [] },
+    { id: "history", label: "/history", descKey: "slash.history", aliases: [] },
+    { id: "compact", label: "/compact", descKey: "slash.compact", aliases: [] },
+    { id: "context", label: "/context", descKey: "slash.context", aliases: [] },
+    { id: "model", label: "/model", descKey: "slash.model", aliases: ["/m"] },
+    { id: "effort", label: "/effort", descKey: "slash.effort", aliases: [] },
+    { id: "always-approve", label: "/always-approve", descKey: "slash.alwaysApprove", aliases: ["/yolo"] },
+    { id: "hooks", label: "/hooks", descKey: "slash.hooks", aliases: [] },
+    { id: "plugins", label: "/plugins", descKey: "slash.plugins", aliases: [] },
+    { id: "marketplace", label: "/marketplace", descKey: "slash.marketplace", aliases: [] },
+    { id: "skills", label: "/skills", descKey: "slash.skills", aliases: [] },
+    { id: "mcps", label: "/mcps", descKey: "slash.mcps", aliases: [] },
+    { id: "memory", label: "/memory", descKey: "slash.memory", aliases: ["/mem"] },
+    { id: "cd", label: "/cd", descKey: "slash.cd", aliases: [] },
+    { id: "theme", label: "/theme", descKey: "slash.theme", aliases: ["/t"] },
+    { id: "settings", label: "/settings", descKey: "slash.settings", aliases: ["/config", "/preferences", "/prefs"] },
+    { id: "privacy", label: "/privacy", descKey: "slash.privacy", aliases: [] },
+    { id: "login", label: "/login", descKey: "slash.login", aliases: [] },
+    { id: "logout", label: "/logout", descKey: "slash.logout", aliases: [] },
+    { id: "tasks", label: "/tasks", descKey: "slash.tasks", aliases: [] },
+    { id: "resume", label: "/resume", descKey: "slash.resume", aliases: [] },
+    { id: "config-agents", label: "/config-agents", descKey: "slash.configAgents", aliases: ["/agents"] },
+    { id: "personas", label: "/personas", descKey: "slash.personas", aliases: [] },
+    { id: "quit", label: "/quit", descKey: "slash.quit", aliases: ["/exit"] }
   ];
 
   let slashPopover = null;
@@ -934,16 +898,16 @@
       else if (action === "reveal" && api) api.revealPath(abs);
       else if (action === "open-app" && api) {
         const result = await api.openPath(abs);
-        if (!result?.ok) toast("无法打开", result?.error || abs);
+        if (!result?.ok) toast(t("file.openFailed"), result?.error || abs, "error");
       } else if (action === "copy-path") {
         await navigator.clipboard.writeText(abs);
-        toast("已复制路径", abs);
+        toast(t("toast.copied"), abs);
       } else if (action === "copy-rel") {
         await navigator.clipboard.writeText(entry.path);
-        toast("已复制相对路径", entry.path);
+        toast(t("toast.copied"), entry.path);
       } else if (action === "copy-name") {
         await navigator.clipboard.writeText(entry.name);
-        toast("已复制名称", entry.name);
+        toast(t("toast.copied"), entry.name);
       }
     }));
   }
@@ -988,32 +952,34 @@
     const button = $("#branchButton");
     button.classList.toggle("is-no-repo", !gitState.isRepo);
     button.classList.toggle("is-dirty", Boolean(gitState.isRepo && gitState.dirtyCount));
-    $("#branchName").textContent = gitState.isRepo ? gitState.current : "非 Git 工作区";
-    $("#branchDirtyDot").title = gitState.isRepo ? (gitState.dirtyCount ? `${gitState.dirtyCount} 个未提交修改` : "工作区干净") : "未检测到 Git 仓库";
+    $("#branchName").textContent = gitState.isRepo ? gitState.current : t("git.noRepo");
+    $("#branchDirtyDot").title = gitState.isRepo
+      ? (gitState.dirtyCount ? t("git.dirty", { count: gitState.dirtyCount }) : t("git.clean"))
+      : t("git.noRepoTitle");
   }
 
   function renderBranchPopover() {
     const title = $("#branchPopoverTitle"); const summary = $("#branchSummary"); const list = $("#branchList");
     if (!gitState.isRepo) {
-      title.textContent = "未检测到 Git 仓库";
-      summary.className = "branch-summary"; summary.innerHTML = "选择一个 Git 工作区后可查看和切换分支";
+      title.textContent = t("git.noRepoTitle");
+      summary.className = "branch-summary"; summary.innerHTML = escapeHtml(t("git.noRepoBody"));
       $("#branchSearch").closest(".branch-search").hidden = true; $("#branchCreateForm").hidden = true;
-      list.innerHTML = '<div class="context-empty">当前目录不在 Git 工作树中</div>'; $("#branchRootLabel").textContent = basename(state.cwd); return;
+      list.innerHTML = `<div class="context-empty">${escapeHtml(t("git.notInTree"))}</div>`; $("#branchRootLabel").textContent = basename(state.cwd); return;
     }
     $("#branchSearch").closest(".branch-search").hidden = false; $("#branchCreateForm").hidden = false;
     title.textContent = gitState.detached ? `Detached · ${gitState.current}` : gitState.current;
     summary.className = `branch-summary ${gitState.dirtyCount ? "is-dirty" : ""}`;
     const divergence = [gitState.ahead ? `↑${gitState.ahead}` : "", gitState.behind ? `↓${gitState.behind}` : ""].filter(Boolean).join(" ");
-    summary.innerHTML = `<span class="branch-summary-dot"></span><b>${gitState.dirtyCount ? `${gitState.dirtyCount} 个未提交修改` : "工作区干净"}</b>${gitState.stagedCount ? `<span>· ${gitState.stagedCount} 个已暂存</span>` : ""}${gitState.upstream ? `<span>· ${escapeHtml(gitState.upstream)} ${divergence}</span>` : '<span>· 无上游分支</span>'}`;
+    summary.innerHTML = `<span class="branch-summary-dot"></span><b>${escapeHtml(gitState.dirtyCount ? t("git.dirty", { count: gitState.dirtyCount }) : t("git.clean"))}</b>${gitState.stagedCount ? `<span>· ${escapeHtml(t("git.staged", { count: gitState.stagedCount }))}</span>` : ""}${gitState.upstream ? `<span>· ${escapeHtml(gitState.upstream)} ${divergence}</span>` : `<span>· ${escapeHtml(t("git.noUpstream"))}</span>`}`;
     const branches = (gitState.branches || []).filter((branch) => branch.name.toLowerCase().includes(branchFilter.toLowerCase()));
-    list.innerHTML = branches.map((branch) => `<button class="branch-item ${branch.current ? "is-current" : ""}" data-git-branch="${escapeHtml(branch.name)}" ${branch.current ? "disabled" : ""}><svg><use href="#i-git"/></svg><span><b>${escapeHtml(branch.name)}</b><small>${escapeHtml([branch.upstream, branch.updated].filter(Boolean).join(" · ") || "本地分支")}</small></span>${branch.current ? "<em>当前</em>" : ""}</button>`).join("") || '<div class="context-empty">没有匹配的本地分支</div>';
+    list.innerHTML = branches.map((branch) => `<button class="branch-item ${branch.current ? "is-current" : ""}" data-git-branch="${escapeHtml(branch.name)}" ${branch.current ? "disabled" : ""}><svg><use href="#i-git"/></svg><span><b>${escapeHtml(branch.name)}</b><small>${escapeHtml([branch.upstream, branch.updated].filter(Boolean).join(" · ") || t("git.localBranch"))}</small></span>${branch.current ? `<em>${escapeHtml(t("git.current"))}</em>` : ""}</button>`).join("") || `<div class="context-empty">${escapeHtml(t("git.noMatch"))}</div>`;
     $("#branchRootLabel").textContent = basename(gitState.root || state.cwd);
     $$('[data-git-branch]', list).forEach((button) => button.addEventListener("click", () => switchBranch(button.dataset.gitBranch, button)));
   }
 
   async function refreshGitInfo({ quiet = false } = {}) {
-    if (!quiet) $("#branchName").textContent = "检查分支…";
-    const next = api ? await api.gitInfo(state.cwd) : { ok: true, isRepo: true, root: state.cwd, current: "main", dirtyCount: 0, stagedCount: 0, branches: [{ name: "main", current: true, updated: "刚刚" }, { name: "feature/ui", current: false, updated: "2 小时前" }] };
+    if (!quiet) $("#branchName").textContent = t("git.checking");
+    const next = api ? await api.gitInfo(state.cwd) : { ok: true, isRepo: false, root: state.cwd, current: "", dirtyCount: 0, stagedCount: 0, branches: [] };
     const info = next?.ok === false ? { ok: true, isRepo: false, branches: [], dirtyCount: 0, error: next.error } : next;
     const changed = gitState.current !== info.current
       || gitState.isRepo !== info.isRepo
@@ -1029,24 +995,24 @@
   }
 
   async function switchBranch(branch, button) {
-    if (activeRun) { toast("任务正在运行", "完成或停止当前任务后再切换分支"); return; }
+    if (activeRun) { toast(t("git.busyTitle"), t("git.busySwitch"), "error"); return; }
     button.disabled = true;
     const result = api ? await api.switchGitBranch(state.cwd, branch) : { ok: true, info: { ...gitState, current: branch, branches: gitState.branches.map((item) => ({ ...item, current: item.name === branch })) } };
     button.disabled = false;
-    if (!result.ok) { toast("分支切换失败", result.error); return; }
+    if (!result.ok) { toast(t("git.switchFailed"), result.error, "error"); return; }
     gitState = result.info; updateBranchPill(); renderBranchPopover(); $("#branchPopover").hidden = true; $("#branchButton").setAttribute("aria-expanded", "false");
-    refreshActiveDockPane(); toast("已切换 Git 分支", branch);
+    refreshActiveDockPane(); toast(t("git.switched"), branch);
   }
 
   async function createBranch(event) {
     event.preventDefault();
     const input = $("#branchCreateInput"); const branch = input.value.trim(); if (!branch) return;
-    if (activeRun) { toast("任务正在运行", "完成或停止当前任务后再创建分支"); return; }
+    if (activeRun) { toast(t("git.busyTitle"), t("git.busyCreate"), "error"); return; }
     const submit = $("#branchCreateForm button"); submit.disabled = true;
     const result = api ? await api.createGitBranch(state.cwd, branch) : { ok: true, info: { ...gitState, current: branch, branches: [{ name: branch, current: true }, ...gitState.branches.map((item) => ({ ...item, current: false }))] } };
     submit.disabled = false;
-    if (!result.ok) { toast("创建分支失败", result.error); return; }
-    input.value = ""; gitState = result.info; updateBranchPill(); renderBranchPopover(); toast("已创建并切换分支", branch);
+    if (!result.ok) { toast(t("git.createFailed"), result.error, "error"); return; }
+    input.value = ""; gitState = result.info; updateBranchPill(); renderBranchPopover(); toast(t("git.created"), branch);
   }
 
   async function toggleBranchPopover(event) {
@@ -1131,12 +1097,22 @@
     saveState(); renderDockTabs(); updateLayout(); refreshActiveDockPane();
   }
 
+  function disposeBrowserPane(tabId) {
+    const pane = [...$$("[data-dock-id]")].find((item) => item.dataset.dockId === tabId);
+    const view = pane && $("[data-browser-view]", pane);
+    if (!view) return;
+    try { view.stop?.(); } catch {}
+    try { view.setAttribute("src", "about:blank"); } catch {}
+    try { view.remove(); } catch {}
+  }
+
   function closeDockTab(tabId) {
     if (state.dockTabs.length <= 1) return;
     const index = state.dockTabs.findIndex((tab) => tab.id === tabId);
     if (index < 0) return;
     const tab = state.dockTabs[index];
     if (tab.type === "terminal") api?.closeTerminal(tab.id);
+    if (tab.type === "browser") disposeBrowserPane(tab.id);
     if (tab.type === "tasks" && tab.runId) api?.cancelPrompt(tab.runId);
     const wasActive = state.activeDockTabId === tabId;
     state.dockTabs.splice(index, 1);
@@ -1161,7 +1137,11 @@
     const host = $("#dockDynamicPanes");
     if (!host) return;
     const ids = new Set(state.dockTabs.filter(dynamicDockTab).map((tab) => tab.id));
-    $$('[data-dock-id]', host).forEach((pane) => { if (!ids.has(pane.dataset.dockId)) pane.remove(); });
+    $$('[data-dock-id]', host).forEach((pane) => {
+      if (ids.has(pane.dataset.dockId)) return;
+      if (pane.dataset.dockKind === "browser") disposeBrowserPane(pane.dataset.dockId);
+      pane.remove();
+    });
     state.dockTabs.filter(dynamicDockTab).forEach((tab) => {
       let pane = [...$$('[data-dock-id]', host)].find((item) => item.dataset.dockId === tab.id);
       if (pane) return;
@@ -1178,9 +1158,9 @@
 
   function initializeSideTaskPane(tab, pane) {
     tab.messages ||= [];
-    pane.innerHTML = `<div class="dock-pane__title side-task-head"><div><small>SIDE TASK</small><h2>${escapeHtml(tab.title)}</h2></div></div>
+    pane.innerHTML = `<div class="dock-pane__title side-task-head"><div><small>${escapeHtml(t("side.eyebrow"))}</small><h2>${escapeHtml(tab.title)}</h2></div></div>
       <div class="side-task-messages" data-side-messages></div>
-      <form class="side-task-composer" data-side-form><textarea rows="1" data-side-input placeholder="在这个并行对话中继续任务…"></textarea><button type="submit" data-side-send title="发送"><svg><use href="#i-send"/></svg></button></form>`;
+      <form class="side-task-composer" data-side-form><textarea rows="1" data-side-input data-i18n-placeholder="side.placeholder" placeholder="${escapeHtml(t("side.placeholder"))}"></textarea><button type="submit" data-side-send data-i18n-title="composer.send" title="${escapeHtml(t("composer.send"))}"><svg><use href="#i-send"/></svg></button></form>`;
     const form = $("[data-side-form]", pane); const input = $("[data-side-input]", pane);
     form.addEventListener("submit", (event) => { event.preventDefault(); sendSideTask(tab.id); });
     input.addEventListener("keydown", (event) => {
@@ -1340,7 +1320,7 @@
     const sharedPrompt = `你正在 Grok Build 的侧边对话中并行处理任务。使用同一项目记忆，并参考下面主对话的最新上下文；直接完成侧边任务。\n\n<主对话最新上下文>\n${mainConversationContext()}\n</主对话最新上下文>\n\n<侧边任务>\n${prompt}\n</侧边任务>`;
     const result = await api.sendPrompt({ clientId: tab.id, prompt: sharedPrompt, cwd: tab.cwd || state.cwd, sessionId: tab.sessionId, model: state.model, effort: state.effort, permissionMode: state.permissionMode, attachments: [] });
     if (!result.ok) { assistant.text = `启动 Grok 时出现问题：${result.error}`; finishSideTask(tab, "启动失败"); return; }
-    if (result.compatibility?.compatibilityChecked) { applyModelCompatibility(result.compatibility); toast("模型工具能力已检测", result.compatibility.toolCapabilityDetail || "已更新第三方模型兼容配置"); }
+    if (result.compatibility?.compatibilityChecked) { applyModelCompatibility(result.compatibility); toast(t("toast.compatChecked"), result.compatibility.toolCapabilityDetail || t("toast.compatUpdated")); }
     tab.runId = result.runId; renderSideTaskPane(tab, pane); saveState();
   }
 
@@ -1380,11 +1360,11 @@
 
   function initializeTerminalPane(tab, pane) {
     tab.cwd ||= state.cwd; tab.output ||= ""; tab.history ||= [];
-    pane.innerHTML = `<div class="dock-pane__title"><div><small>NATIVE SHELL SESSION</small><h2>${escapeHtml(tab.title)}</h2></div><span class="terminal-cwd" title="${escapeHtml(tab.cwd)}">${escapeHtml(basename(tab.cwd))}</span></div>
-      <div class="terminal-toolbar"><span data-terminal-state><i></i>正在启动</span><button type="button" data-terminal-clear>清屏</button><button type="button" data-terminal-restart><svg><use href="#i-refresh"/></svg>重启</button></div>
+    pane.innerHTML = `<div class="dock-pane__title"><div><small>${escapeHtml(t("terminal.eyebrow"))}</small><h2>${escapeHtml(tab.title)}</h2></div><span class="terminal-cwd" title="${escapeHtml(tab.cwd)}">${escapeHtml(basename(tab.cwd))}</span></div>
+      <div class="terminal-toolbar"><span data-terminal-state><i></i>${escapeHtml(t("terminal.starting"))}</span><button type="button" data-terminal-clear>${escapeHtml(t("terminal.clear"))}</button><button type="button" data-terminal-restart><svg><use href="#i-refresh"/></svg>${escapeHtml(t("terminal.restart"))}</button></div>
       <pre class="terminal-screen" data-terminal-output></pre>
-      <form class="terminal-composer" data-terminal-form><span>›</span><input data-terminal-input autocomplete="off" spellcheck="false" placeholder="输入 PowerShell / Shell 命令…"/><button type="submit"><svg><use href="#i-play"/></svg></button></form>`;
-    $("[data-terminal-output]", pane).textContent = tab.output || "Grok Build native terminal ready.\n";
+      <form class="terminal-composer" data-terminal-form><span>›</span><input data-terminal-input autocomplete="off" spellcheck="false" data-i18n-placeholder="terminal.placeholder" placeholder="${escapeHtml(t("terminal.placeholder"))}"/><button type="submit"><svg><use href="#i-play"/></svg></button></form>`;
+    $("[data-terminal-output]", pane).textContent = tab.output || `${t("terminal.ready")}\n`;
     $("[data-terminal-form]", pane).addEventListener("submit", (event) => { event.preventDefault(); submitTerminalCommand(tab.id); });
     const input = $("[data-terminal-input]", pane); let historyIndex = tab.history.length;
     input.addEventListener("keydown", (event) => {
@@ -1401,22 +1381,31 @@
   }
 
   function appendTerminalOutput(tab, value) {
-    tab.output = `${tab.output || ""}${stripAnsi(value)}`.slice(-200_000);
+    const chunk = stripAnsi(value);
+    if (!chunk) return;
+    const previous = tab.output || "";
+    tab.output = `${previous}${chunk}`.slice(-200_000);
     const pane = [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
     const output = pane && $("[data-terminal-output]", pane);
-    if (output) { output.textContent = tab.output; output.scrollTop = output.scrollHeight; }
+    if (!output) return;
+    if (tab.output.length < previous.length + chunk.length || !output.childNodes.length) {
+      output.textContent = tab.output;
+    } else {
+      output.appendChild(document.createTextNode(chunk));
+    }
+    output.scrollTop = output.scrollHeight;
   }
 
   async function ensureTerminalSession(tab, pane = null) {
     pane ||= [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
     if (!pane || tab.terminalReady) return;
     const status = $("[data-terminal-state]", pane);
-    if (!api) { status.innerHTML = "<i></i>桌面预览"; return; }
-    status.innerHTML = "<i></i>正在启动";
+    if (!api) { status.innerHTML = `<i></i>${escapeHtml(t("toast.desktopPreview"))}`; return; }
+    status.innerHTML = `<i></i>${escapeHtml(t("terminal.starting"))}`;
     const result = await api.createTerminal(tab.id, tab.cwd || state.cwd);
     if (!result.ok) { status.classList.add("is-error"); status.textContent = result.error; appendTerminalOutput(tab, `${result.error}\n`); return; }
     tab.terminalReady = true; tab.shell = result.shell;
-    status.classList.remove("is-error"); status.innerHTML = `<i></i>${escapeHtml(result.shell)} 在线`;
+    status.classList.remove("is-error"); status.innerHTML = `<i></i>${escapeHtml(t("terminal.online", { shell: result.shell }))}`;
     appendTerminalOutput(tab, tab.output ? "" : `${result.shell} · ${result.cwd}\n`);
   }
 
@@ -2115,7 +2104,7 @@
     $$(".copy-message").forEach((button) => button.addEventListener("click", async () => {
       const id = button.closest(".message").dataset.messageId;
       const message = activeThread()?.messages.find((item) => item.id === id);
-      if (message) { await navigator.clipboard.writeText(message.text); toast("已复制", "回复已复制到剪贴板"); }
+      if (message) { await navigator.clipboard.writeText(message.text); toast(t("toast.copied"), t("toast.copiedReply")); }
     }));
     $$("[data-tool-group-toggle]").forEach((button) => button.addEventListener("click", () => {
       button.closest("[data-tool-group]")?.classList.toggle("is-open");
@@ -2137,7 +2126,7 @@
   }
 
   function bindMessageBody(body) {
-    $$(".copy-code", body).forEach((button) => button.addEventListener("click", async () => { await navigator.clipboard.writeText(button.closest(".code-block").querySelector("pre").textContent); toast("已复制", "代码块已复制"); }));
+    $$(".copy-code", body).forEach((button) => button.addEventListener("click", async () => { await navigator.clipboard.writeText(button.closest(".code-block").querySelector("pre").textContent); toast(t("toast.copied"), t("toast.copiedCode")); }));
     $$("a", body).forEach((link) => link.addEventListener("click", (event) => { if (api) { event.preventDefault(); api.openExternal(link.href); } }));
   }
 
@@ -2264,7 +2253,7 @@
       if (isRuntimeMissingError(result)) openRuntimeSetup({ force: true });
       return;
     }
-    if (result.compatibility?.compatibilityChecked) { applyModelCompatibility(result.compatibility); toast("模型工具能力已检测", result.compatibility.toolCapabilityDetail || "已更新第三方模型兼容配置"); }
+    if (result.compatibility?.compatibilityChecked) { applyModelCompatibility(result.compatibility); toast(t("toast.compatChecked"), result.compatibility.toolCapabilityDetail || t("toast.compatUpdated")); }
     activeRun = result.runId;
     state.attachments = [];
     renderAttachments();
@@ -2307,7 +2296,7 @@
     } else if (event.type === "error") {
       ensureActiveAssistant(true);
       activeAssistantMessage.text += `\n\n**错误：** ${event.message}`;
-      toast("Grok 返回错误", event.message);
+      toast(t("toast.runError"), event.message, "error");
       renderMessages();
     } else if (event.type === "end") {
       const thread = activeThread();
@@ -2344,7 +2333,7 @@
   function autoSizeInput() { const el = $("#promptInput"); el.style.height = "auto"; el.style.height = `${Math.min(el.scrollHeight, 180)}px`; }
 
   async function chooseWorkspace() {
-    if (!api) { toast("桌面预览", "Electron 中可选择本地工作区"); return; }
+    if (!api) { toast(t("toast.desktopPreview"), t("toast.desktopPreviewHint"), "info"); return; }
     const cwd = await api.pickWorkspace();
     if (cwd) {
       if (fileEditorDirty && !window.confirm(t("file.unsavedConfirm"))) return;
@@ -2363,7 +2352,7 @@
       const tabName = $("#fileTabName");
       if (tabName) tabName.textContent = t("file.noSelection");
       refreshActiveDockPane();
-      toast("已切换工作区", cwd);
+      toast(t("toast.workspaceSwitched"), cwd);
     }
   }
 
@@ -2857,7 +2846,7 @@
         if (isRuntimeMissingError(result)) openRuntimeSetup({ force: true });
         return;
       }
-      authState = result.info; updateAccountUI(); toast("已退出 Grok", "本地 Runtime 仍可使用第三方模型"); return;
+      authState = result.info; updateAccountUI(); toast(t("account.signedOut"), t("account.signedOutHint")); return;
     }
     $("#authProgress").hidden = false; $("#authProgressText").textContent = t("account.connectingAuth");
     const result = await api.login();
@@ -3265,9 +3254,17 @@
     return match ? match[1] : null;
   }
 
+  function localizedSlashCommand(command) {
+    return {
+      ...command,
+      description: t(command.descKey || "slash.head")
+    };
+  }
+
   function filterSlashCommands(query) {
     const needle = String(query || "/").toLowerCase();
     return slashCommands
+      .map(localizedSlashCommand)
       .map((command) => ({
         ...command,
         haystack: [command.label, ...(command.aliases || []), command.description].join(" ").toLowerCase()
@@ -3280,7 +3277,7 @@
     if (!slashPopover) return;
     const items = slashPopover.querySelector(".slash-popover__items");
     if (!slashMatches.length) {
-      items.innerHTML = '<div class="slash-popover__empty">没有匹配的斜杠命令</div>';
+      items.innerHTML = `<div class="slash-popover__empty">${escapeHtml(t("slash.empty"))}</div>`;
       return;
     }
     items.innerHTML = slashMatches.map((command, index) => `
@@ -3314,7 +3311,7 @@
     if (!slashPopover) {
       slashPopover = document.createElement("section");
       slashPopover.className = "slash-popover";
-      slashPopover.innerHTML = `<div class="slash-popover__head">斜杠命令</div><div class="slash-popover__items"></div>`;
+      slashPopover.innerHTML = `<div class="slash-popover__head">${escapeHtml(t("slash.head"))}</div><div class="slash-popover__items"></div>`;
       document.body.appendChild(slashPopover);
     }
     renderSlashMenu();
@@ -3362,7 +3359,7 @@
     const input = $("#promptInput");
     const run = {
       help: () => openPalette(),
-      docs: () => api?.openExternal?.("https://x.ai") || toast("文档", "请查看 Grok Build 使用指南"),
+      docs: () => api?.openExternal?.("https://x.ai") || toast(t("slash.docs"), t("slash.docsHint"), "info"),
       new: () => createThread(),
       home: () => { state.activeThreadId = null; saveState(); renderAll(); },
       model: () => $("#modelButton").click(),
@@ -3379,20 +3376,20 @@
       "config-agents": () => openSettings("integrations"),
       personas: () => openSettings("integrations"),
       cd: () => chooseWorkspace(),
-      theme: () => { state.theme = resolvedTheme() === "dark" ? "light" : "dark"; saveState(); updateLayout(); toast("主题已切换", resolvedTheme()); },
+      theme: () => { state.theme = resolvedTheme() === "dark" ? "light" : "dark"; saveState(); updateLayout(); toast(t("toast.themeSwitched"), resolvedTheme()); },
       login: () => toggleAuth(),
       logout: () => toggleAuth(),
       quit: () => api?.close?.(),
       exit: () => api?.close?.(),
       copy: async () => {
         const message = [...(activeThread()?.messages || [])].reverse().find((item) => item.role === "assistant" && item.text);
-        if (!message) return toast("没有可复制的回复", "先完成一轮对话");
+        if (!message) return toast(t("slash.copyEmpty"), t("slash.copyEmptyHint"), "info");
         await navigator.clipboard.writeText(message.text);
-        toast("已复制", "最近回复已复制到剪贴板");
+        toast(t("toast.copied"), t("toast.copiedReply"));
       },
       tasks: () => { state.inspectorOpen = true; openDockType("tasks"); updateLayout(); },
-      context: () => toast("上下文", "桌面端会在运行时自动管理上下文压缩"),
-      compact: () => toast("压缩", "会话压缩由 Runtime 在达到阈值时自动执行"),
+      context: () => toast(t("slash.context"), t("slash.contextHint"), "info"),
+      compact: () => toast(t("slash.compact"), t("slash.compactHint"), "info"),
       resume: () => openPalette(),
       find: () => openPalette(),
       history: () => openPalette()
@@ -3404,7 +3401,6 @@
       return;
     }
     replaceSlashToken(command.label);
-    toast("斜杠命令", `${command.label} 已填入输入框，可继续补充参数后发送`);
   }
 
   function openPicker(anchor, { items, selected, onSelect, align = "left", scrollable = false }) {
@@ -3439,10 +3435,41 @@
     }));
   }
 
-  function toast(title, detail) {
-    const node = document.createElement("div"); node.className = "toast";
-    node.innerHTML = `<svg><use href="#i-check"/></svg><span><b>${escapeHtml(title)}</b><small>${escapeHtml(detail)}</small></span>`;
-    $("#toastStack").appendChild(node); setTimeout(() => node.remove(), 3600);
+  const toastRecent = new Map();
+  function toast(title, detail = "", kind = "success") {
+    const tone = ["success", "error", "info"].includes(kind) ? kind : "success";
+    const key = `${tone}|${title}|${detail}`;
+    const now = Date.now();
+    const last = toastRecent.get(key) || 0;
+    if (now - last < 1400) return;
+    toastRecent.set(key, now);
+    const stack = $("#toastStack");
+    if (!stack) return;
+    while (stack.children.length >= 4) stack.firstElementChild.remove();
+    const icon = tone === "error" ? "i-x" : tone === "info" ? "i-more" : "i-check";
+    const node = document.createElement("div");
+    node.className = `toast toast--${tone}`;
+    node.innerHTML = `<svg><use href="#${icon}"/></svg><span><b>${escapeHtml(title)}</b><small>${escapeHtml(detail)}</small></span>`;
+    stack.appendChild(node);
+    setTimeout(() => node.remove(), tone === "error" ? 4800 : 3600);
+  }
+
+  function tidyThreads() {
+    const keepId = state.activeThreadId;
+    const removable = state.threads.filter((thread) => thread.id !== keepId);
+    if (!removable.length) {
+      toast(t("toast.threadsCleared"), t("toast.threadsTidiedNone"), "info");
+      return;
+    }
+    if (!confirm(t("toast.threadsTidyConfirm", { count: removable.length }))) return;
+    state.threads = state.threads.filter((thread) => thread.id === keepId);
+    if (!state.threads.some((thread) => thread.id === state.activeThreadId)) {
+      state.activeThreadId = state.threads[0]?.id || null;
+    }
+    saveState();
+    renderThreads();
+    renderMessages();
+    toast(t("toast.threadsCleared"), t("toast.threadsClearedHint", { count: removable.length }));
   }
 
   function loadTipFlags() {
@@ -3793,7 +3820,7 @@
         onSelect: (item) => { state.effort = item.id; state.effortLabel = item.label; saveState(); updateWorkspace(); toast(t("toast.effortSwitched"), item.label); }
       });
     });
-    $("#clearThreadsButton").addEventListener("click", () => toast(t("toast.threadsCleared"), t("toast.threadsClearedHint")));
+    $("#clearThreadsButton").addEventListener("click", () => tidyThreads());
     $("#conversation").addEventListener("scroll", () => { const el = $("#conversation"); $("#scrollBottom").classList.toggle("is-visible", el.scrollHeight - el.scrollTop - el.clientHeight > 160); });
     $("#scrollBottom").addEventListener("click", scrollToBottom);
     $$('[data-window]').forEach((button) => button.addEventListener("click", () => { if (!api) return; const action = button.dataset.window; if (action === "min") api.minimize(); else if (action === "max") api.maximize(); else api.close(); }));
@@ -3851,9 +3878,9 @@
     if (event.type === "error") appendTerminalOutput(tab, `\n${event.message}\n`);
     if (event.type === "exit") {
       tab.terminalReady = false;
-      if (!event.closing) appendTerminalOutput(tab, `\n[终端进程已退出：${event.code ?? event.signal ?? "unknown"}]\n`);
+      if (!event.closing) appendTerminalOutput(tab, `\n[${t("terminal.exited", { code: event.code ?? event.signal ?? "unknown" })}]\n`);
       const pane = [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
-      const status = pane && $("[data-terminal-state]", pane); if (status) { status.classList.add("is-error"); status.textContent = "会话已结束"; }
+      const status = pane && $("[data-terminal-state]", pane); if (status) { status.classList.add("is-error"); status.textContent = t("terminal.ended"); }
     }
   });
   if (api) api.onAuthEvent((event) => {

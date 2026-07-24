@@ -591,10 +591,27 @@ function startSessionUpdateBridge(runId, payload) {
       }
     } finally { polling = false; }
   };
-  const timer = setInterval(poll, 120); poll();
+  const timer = setInterval(poll, 280); poll();
+  let watchTimer = null;
+  let watcher = null;
+  try {
+    watcher = fs.watch(root, { recursive: true }, () => {
+      clearTimeout(watchTimer);
+      watchTimer = setTimeout(poll, 40);
+    });
+  } catch {}
   const bridge = {
     flush() { poll(); },
-    stop(delay = 0) { setTimeout(() => { poll(); stopped = true; clearInterval(timer); sessionUpdateBridges.delete(runId); }, delay); }
+    stop(delay = 0) {
+      setTimeout(() => {
+        poll();
+        stopped = true;
+        clearInterval(timer);
+        clearTimeout(watchTimer);
+        try { watcher?.close(); } catch {}
+        sessionUpdateBridges.delete(runId);
+      }, delay);
+    }
   };
   sessionUpdateBridges.set(runId, bridge);
   return bridge;

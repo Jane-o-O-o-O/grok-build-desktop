@@ -1,6 +1,6 @@
 {
   "name": "grok-build-desktop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Grok Build Desktop GUI — Electron AI coding agent workspace for the native grok / Grok Build runtime",
   "homepage": "https://github.com/Jane-o-O-o-O/grok-build-desktop",
   "author": {
@@ -47,7 +47,10 @@
     ],
     "win": {
       "icon": "build/icon.png",
-      "target": ["nsis", "portable"],
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "artifactName": "Grok-Build-Desktop-${version}-Windows-${arch}.${ext}"
     },
     "nsis": {
@@ -64,7 +67,10 @@
     },
     "linux": {
       "icon": "build/icon.png",
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Development",
       "maintainer": "Jane-o-O-o-O <Jane-o-O-o-O@users.noreply.github.com>",
       "artifactName": "Grok-Build-Desktop-${version}-Linux-${arch}.${ext}"
