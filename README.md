@@ -361,14 +361,14 @@ The Composer provides:
 
 Typing `/` opens a picker with **desktop-handled commands only**, with alias search, arrow navigation, `Enter` / `Tab` selection, and `Escape` dismissal.
 
-Desktop-native commands such as `/new`, `/model`, `/effort`, `/settings`, `/theme`, `/login`, `/logout`, `/cd`, `/copy`, and `/tasks` are handled immediately by the interface. Other commands are inserted into the Composer and sent to the native runtime, including:
+Desktop-native commands such as `/new`, `/model`, `/effort`, `/settings`, `/theme`, `/login`, `/logout`, `/cd`, `/copy`, and `/tasks` are handled immediately by the interface. Examples currently in the picker:
 
 ```text
-/fork        /compact      /context      /hooks
-/plugins     /skills       /memory       /plan
-/resume      /mcps         /btw          /recap
-/voice       /loop         /imagine      /usage
-/tasks       /goal         /code-review  /check-work
+/help        /docs         /new          /home
+/copy        /find         /history      /compact
+/context     /model        /effort       /always-approve
+/settings    /theme        /login        /tasks
+/cd          /memory       /marketplace  /quit
 ```
 
 ---

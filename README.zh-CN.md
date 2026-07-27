@@ -361,14 +361,14 @@ Composer 提供：
 
 输入 `/` 后会出现只展示桌面端已接入命令的选择器，支持别名搜索、上下方向键、`Enter` / `Tab` 选择和 `Escape` 关闭。
 
-桌面端可以直接处理 `/new`、`/model`、`/effort`、`/settings`、`/theme`、`/login`、`/logout`、`/cd`、`/copy`、`/tasks` 等界面命令；其余命令会填入 Composer，再交给原生 Runtime 执行，例如：
+桌面端可以直接处理 `/new`、`/model`、`/effort`、`/settings`、`/theme`、`/login`、`/logout`、`/cd`、`/copy`、`/tasks` 等界面命令。当前选择器示例：
 
 ```text
-/fork        /compact      /context      /hooks
-/plugins     /skills       /memory       /plan
-/resume      /mcps         /btw          /recap
-/voice       /loop         /imagine      /usage
-/tasks       /goal         /code-review  /check-work
+/help        /docs         /new          /home
+/copy        /find         /history      /compact
+/context     /model        /effort       /always-approve
+/settings    /theme        /login        /tasks
+/cd          /memory       /marketplace  /quit
 ```
 
 ---

@@ -1294,16 +1294,16 @@
 
   function mainConversationContext() {
     const thread = activeThread();
-    if (!thread?.messages?.length) return "主对话目前还没有消息。";
+    if (!thread?.messages?.length) return t("side.mainEmpty");
     return thread.messages.filter((message) => ["user", "assistant"].includes(message.role)).slice(-10)
-      .map((message) => `${message.role === "user" ? "用户" : "Grok"}: ${String(message.text || "").slice(0, 1800)}`).join("\n\n");
+      .map((message) => `${message.role === "user" ? t("side.roleUser") : "Grok"}: ${String(message.text || "").slice(0, 1800)}`).join("\n\n");
   }
 
   async function sendSideTask(tabId) {
     const tab = state.dockTabs.find((item) => item.id === tabId && item.type === "tasks");
     const pane = [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tabId);
     if (!tab || !pane) return;
-    if (tab.runId) { if (api) await api.cancelPrompt(tab.runId); finishSideTask(tab, "已停止"); return; }
+    if (tab.runId) { if (api) await api.cancelPrompt(tab.runId); finishSideTask(tab, t("side.stopped")); return; }
     const input = $("[data-side-input]", pane); const prompt = input.value.trim();
     if (!prompt) return;
     tab.messages ||= [];
@@ -1314,13 +1314,13 @@
     renderSideTaskPane(tab, pane); saveState();
     if (!api) {
       tab.runId = `demo-${uid()}`;
-      assistant.text = `侧边任务已收到：**${prompt}**`;
-      setTimeout(() => finishSideTask(tab, "预览完成"), 350);
+      assistant.text = t("side.previewAck", { prompt });
+      setTimeout(() => finishSideTask(tab, t("side.previewDone")), 350);
       renderSideTaskPane(tab, pane); return;
     }
-    const sharedPrompt = `你正在 Grok Build 的侧边对话中并行处理任务。使用同一项目记忆，并参考下面主对话的最新上下文；直接完成侧边任务。\n\n<主对话最新上下文>\n${mainConversationContext()}\n</主对话最新上下文>\n\n<侧边任务>\n${prompt}\n</侧边任务>`;
+    const sharedPrompt = t("side.sharedPrompt", { context: mainConversationContext(), prompt });
     const result = await api.sendPrompt({ clientId: tab.id, prompt: sharedPrompt, cwd: tab.cwd || state.cwd, sessionId: tab.sessionId, model: state.model, effort: state.effort, permissionMode: state.permissionMode, attachments: [] });
-    if (!result.ok) { assistant.text = `启动 Grok 时出现问题：${result.error}`; finishSideTask(tab, "启动失败"); return; }
+    if (!result.ok) { assistant.text = t("side.startFailed", { error: result.error }); finishSideTask(tab, t("side.failed")); return; }
     if (result.compatibility?.compatibilityChecked) { applyModelCompatibility(result.compatibility); toast(t("toast.compatChecked"), result.compatibility.toolCapabilityDetail || t("toast.compatUpdated")); }
     tab.runId = result.runId; renderSideTaskPane(tab, pane); saveState();
   }
@@ -1341,7 +1341,7 @@
       assistant.thought = (assistant.thought || "") + (event.data || ""); scheduleSideStreamingRender(tab); return;
     }
     else if (event.type === "error" && assistant) assistant.text += `\n\n**错误：** ${event.message}`;
-    else if (event.type === "end") { tab.sessionId = event.sessionId || tab.sessionId; finishSideTask(tab, event.stopReason || "完成"); return; }
+    else if (event.type === "end") { tab.sessionId = event.sessionId || tab.sessionId; finishSideTask(tab, event.stopReason || t("side.done")); return; }
     else if (event.type === "process_exit" && event.code !== 0) { finishSideTask(tab, `进程退出 ${event.code ?? event.signal}`); return; }
     const pane = [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
     renderSideTaskPane(tab, pane);
@@ -3852,6 +3852,12 @@
       if (event.key === "Escape") {
         if (fileContextMenu) { closeFileContextMenu(); return; }
         if (slashPopover) { closeSlashMenu(); return; }
+        if (browserCtx?.input && document.activeElement === browserCtx.input) {
+          event.preventDefault();
+          browserCtx.input.value = browserCtx.tab.url === "about:blank" ? "" : (browserCtx.tab.url || "");
+          browserCtx.input.blur();
+          return;
+        }
         if (!$("#macosTipBackdrop").hidden) { closeMacosTip({ remember: true }); return; }
         if (!$("#runtimeSetupBackdrop").hidden) { closeRuntimeSetup({ dismiss: true }); return; }
         if (!$("#integrationDetailBackdrop").hidden) { closeIntegrationDetail(); return; }
