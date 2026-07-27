@@ -345,7 +345,7 @@ Consecutive tool calls can be grouped into an **Execution Steps** block with liv
 
 ---
 
-## Composer, Models, and 65 Slash Commands
+## Composer, Models, and Slash Commands
 
 The Composer provides:
 
@@ -359,7 +359,7 @@ The Composer provides:
 - Stop-generation control.
 - Searchable Slash command picker.
 
-Typing `/` opens a picker containing **65 commands**, with alias search, arrow navigation, `Enter` / `Tab` selection, and `Escape` dismissal.
+Typing `/` opens a picker with **desktop-handled commands only**, with alias search, arrow navigation, `Enter` / `Tab` selection, and `Escape` dismissal.
 
 Desktop-native commands such as `/new`, `/model`, `/effort`, `/settings`, `/theme`, `/login`, `/logout`, `/cd`, `/copy`, and `/tasks` are handled immediately by the interface. Other commands are inserted into the Composer and sent to the native runtime, including:
 

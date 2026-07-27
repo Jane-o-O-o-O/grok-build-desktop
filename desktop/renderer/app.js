@@ -257,6 +257,7 @@
     updateProviderSelection();
     if (!activeRun) setSessionStateText(t("toolbar.ready"));
     renderAll();
+    refreshActiveDockPane();
   }
 
   function nativePermissionMode(value) {
@@ -386,7 +387,7 @@
     const blocks = [];
     let text = escaped.replace(/```([^\n]*)\n([\s\S]*?)```/g, (_match, language, code) => {
       const id = blocks.length;
-      blocks.push(`<div class="code-block"><div class="code-block__head"><span>${language || "text"}</span><button class="icon-button copy-code" title="复制"><svg><use href="#i-copy"/></svg></button></div><pre>${code.replace(/\n$/, "")}</pre></div>`);
+      blocks.push(`<div class="code-block"><div class="code-block__head"><span>${language || "text"}</span><button class="icon-button copy-code" title="${escapeHtml(t("copy"))}"><svg><use href="#i-copy"/></svg></button></div><pre>${code.replace(/\n$/, "")}</pre></div>`);
       return `\n@@BLOCK${id}@@\n`;
     });
     const lines = text.split("\n");
@@ -439,10 +440,10 @@
       <h1>${escapeHtml(t("welcome.title"))}</h1>
       <p>${escapeHtml(t("welcome.body"))}</p>
       <div class="quick-actions">
-        <button class="quick-action" data-prompt="分析这个代码库的架构，并指出最值得优先改进的三个地方"><b>${escapeHtml(t("welcome.q1.title"))}</b><small>${escapeHtml(t("welcome.q1.desc"))}</small><svg><use href="#i-arrow-up"/></svg></button>
-        <button class="quick-action" data-prompt="检查当前 Git 改动，找出潜在 bug 并直接修复"><b>${escapeHtml(t("welcome.q2.title"))}</b><small>${escapeHtml(t("welcome.q2.desc"))}</small><svg><use href="#i-arrow-up"/></svg></button>
-        <button class="quick-action" data-prompt="运行项目测试，定位失败原因并修复"><b>${escapeHtml(t("welcome.q3.title"))}</b><small>${escapeHtml(t("welcome.q3.desc"))}</small><svg><use href="#i-arrow-up"/></svg></button>
-        <button class="quick-action" data-prompt="为这个项目补充一份清晰的开发者文档"><b>${escapeHtml(t("welcome.q4.title"))}</b><small>${escapeHtml(t("welcome.q4.desc"))}</small><svg><use href="#i-arrow-up"/></svg></button>
+        <button class="quick-action" data-prompt="${escapeHtml(t("welcome.q1.prompt"))}"><b>${escapeHtml(t("welcome.q1.title"))}</b><small>${escapeHtml(t("welcome.q1.desc"))}</small><svg><use href="#i-arrow-up"/></svg></button>
+        <button class="quick-action" data-prompt="${escapeHtml(t("welcome.q2.prompt"))}"><b>${escapeHtml(t("welcome.q2.title"))}</b><small>${escapeHtml(t("welcome.q2.desc"))}</small><svg><use href="#i-arrow-up"/></svg></button>
+        <button class="quick-action" data-prompt="${escapeHtml(t("welcome.q3.prompt"))}"><b>${escapeHtml(t("welcome.q3.title"))}</b><small>${escapeHtml(t("welcome.q3.desc"))}</small><svg><use href="#i-arrow-up"/></svg></button>
+        <button class="quick-action" data-prompt="${escapeHtml(t("welcome.q4.prompt"))}"><b>${escapeHtml(t("welcome.q4.title"))}</b><small>${escapeHtml(t("welcome.q4.desc"))}</small><svg><use href="#i-arrow-up"/></svg></button>
       </div>
     </div>`;
   }
@@ -605,7 +606,7 @@
       ${continuation ? "" : `<div class="message__meta"><span class="message__identity">${identity}</span><b>${assistant ? "Grok" : "你"}</b><span>${formatTime(message.createdAt)}</span></div>`}
       ${assistant ? `<div class="message__thinking-slot">${thinkingMarkup(message, activeAssistantMessage?.id === message.id)}</div>` : ""}
       <div class="message__body ${emptyBody ? "is-streaming" : ""}">${assistant ? (emptyBody && !message.thought ? '<span class="stream-caret" aria-hidden="true"></span>' : markdown(message.text)) : escapeHtml(message.text)}</div>
-      ${assistant && !continuation ? '<div class="message-actions"><button class="icon-button copy-message" title="复制"><svg><use href="#i-copy"/></svg></button></div>' : ""}
+      ${assistant && !continuation ? `<div class="message-actions"><button class="icon-button copy-message" title="${escapeHtml(t("copy"))}"><svg><use href="#i-copy"/></svg></button></div>` : ""}
     </article>`;
   }
 
@@ -658,7 +659,7 @@
         if (String(activeAssistantMessage.text || "").trim()) {
           block?.classList.remove("is-active");
           if (block) block.open = false;
-          const label = block?.querySelector("summary b"); if (label) label.textContent = "思考过程";
+          const label = block?.querySelector("summary b"); if (label) label.textContent = t("thinking.done");
           const signal = block?.querySelector(".thinking-block__signal"); if (signal) signal.innerHTML = '<svg><use href="#i-check"/></svg>';
         }
       }
@@ -1030,10 +1031,10 @@
   function renderContextFiles() {
     const target = $("#contextFiles");
     if (!target) return;
-    $("#fileCount").textContent = `${state.attachments.length} FILES`;
+    $("#fileCount").textContent = t("context.fileCount", { count: state.attachments.length });
     if (!state.attachments.length) {
       target.className = "context-empty";
-      target.innerHTML = '<svg><use href="#i-folder"/></svg><span>附件和修改过的文件会显示在这里</span>';
+      target.innerHTML = `<svg><use href="#i-folder"/></svg><span>${escapeHtml(t("context.empty"))}</span>`;
     } else {
       target.className = "context-files";
       target.innerHTML = state.attachments.map((file) => `<button class="context-file" data-file="${escapeHtml(file)}"><svg><use href="#i-paperclip"/></svg><span>${escapeHtml(basename(file))}</span></button>`).join("");
@@ -1249,7 +1250,7 @@
     if (!pane) return;
     const target = $("[data-side-messages]", pane);
     if (!tab.messages?.length) {
-      target.innerHTML = `<div class="side-task-empty"><span class="grok-mark" aria-hidden="true"></span><h3>并行处理一个新任务</h3><p>在这里开启独立会话，与主对话并行推进。</p></div>`;
+      target.innerHTML = `<div class="side-task-empty"><span class="grok-mark" aria-hidden="true"></span><h3>${escapeHtml(t("side.emptyTitle"))}</h3><p>${escapeHtml(t("side.emptyBody"))}</p></div>`;
     } else {
       const chunks = [];
       for (let index = 0; index < tab.messages.length;) {
