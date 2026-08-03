@@ -96,31 +96,31 @@
       </aside>
 
       <main class="workspace">
-        <div class="pane-resizer pane-resizer--sidebar" id="sidebarResizer" role="separator" aria-orientation="vertical" aria-label="调整侧栏宽度"></div>
-        <div class="pane-resizer pane-resizer--inspector" id="inspectorResizer" role="separator" aria-orientation="vertical" aria-label="调整工作台宽度"></div>
+        <div class="pane-resizer pane-resizer--sidebar" id="sidebarResizer" role="separator" aria-orientation="vertical" data-i18n-aria="toolbar.resizeSidebar" aria-label="调整侧栏宽度"></div>
+        <div class="pane-resizer pane-resizer--inspector" id="inspectorResizer" role="separator" aria-orientation="vertical" data-i18n-aria="toolbar.resizeInspector" aria-label="调整工作台宽度"></div>
         <div class="file-drop-overlay" id="fileDropOverlay" hidden><svg><use href="#i-paperclip"/></svg><b data-i18n="composer.dropFiles">拖放文件以添加到对话</b><small data-i18n="composer.dropFilesHint">松开鼠标后文件会显示在输入框上方</small></div>
         <div class="workspace-toolbar">
           <div class="toolbar-group toolbar-group--branch">
-            <button class="icon-button sidebar-toggle" id="sidebarToggle" title="侧栏"><svg><use href="#i-panel"/></svg></button>
-            <button class="branch-pill" id="branchButton" aria-expanded="false" title="查看和切换 Git 分支"><svg><use href="#i-git"/></svg><span id="branchName">检查分支</span><i id="branchDirtyDot"></i><svg class="branch-chevron"><use href="#i-chevron"/></svg></button>
+            <button class="icon-button sidebar-toggle" id="sidebarToggle" data-i18n-title="toolbar.sidebar" title="侧栏"><svg><use href="#i-panel"/></svg></button>
+            <button class="branch-pill" id="branchButton" aria-expanded="false" data-i18n-title="toolbar.branchTitle" title="查看和切换 Git 分支"><svg><use href="#i-git"/></svg><span id="branchName" data-i18n="toolbar.checkBranch">检查分支</span><i id="branchDirtyDot"></i><svg class="branch-chevron"><use href="#i-chevron"/></svg></button>
             <section class="branch-popover" id="branchPopover" hidden>
-              <header><span><small>GIT WORKSPACE</small><b id="branchPopoverTitle">分支</b></span><button class="icon-button" id="branchRefresh" title="刷新"><svg><use href="#i-refresh"/></svg></button></header>
+              <header><span><small>GIT WORKSPACE</small><b id="branchPopoverTitle" data-i18n="toolbar.branch">分支</b></span><button class="icon-button" id="branchRefresh" data-i18n-title="toolbar.refresh" title="刷新"><svg><use href="#i-refresh"/></svg></button></header>
               <div class="branch-summary" id="branchSummary"></div>
-              <label class="branch-search"><svg><use href="#i-search"/></svg><input id="branchSearch" placeholder="搜索本地分支…"/></label>
+              <label class="branch-search"><svg><use href="#i-search"/></svg><input id="branchSearch" data-i18n-placeholder="toolbar.searchBranch" placeholder="搜索本地分支…"/></label>
               <div class="branch-list" id="branchList"></div>
-              <form class="branch-create" id="branchCreateForm"><input id="branchCreateInput" placeholder="新分支名称" spellcheck="false"/><button class="secondary-button" type="submit"><svg><use href="#i-plus"/></svg>创建</button></form>
+              <form class="branch-create" id="branchCreateForm"><input id="branchCreateInput" data-i18n-placeholder="toolbar.newBranch" placeholder="新分支名称" spellcheck="false"/><button class="secondary-button" type="submit"><svg><use href="#i-plus"/></svg><span data-i18n="toolbar.createBranch">创建</span></button></form>
               <footer><span id="branchRootLabel"></span></footer>
             </section>
           </div>
           <div class="toolbar-group toolbar-group--right">
-            <span class="session-state" id="sessionState"><i></i><span id="sessionStateLabel">Ready</span></span>
-            <button class="icon-button" id="inspectorToggle" title="右侧工作台"><svg><use href="#i-panel"/></svg></button>
+            <span class="session-state" id="sessionState"><i></i><span id="sessionStateLabel" data-i18n="toolbar.ready">Ready</span></span>
+            <button class="icon-button" id="inspectorToggle" data-i18n-title="toolbar.inspector" title="右侧工作台"><svg><use href="#i-panel"/></svg></button>
           </div>
         </div>
 
         <section class="conversation" id="conversation" aria-live="polite">
           <div class="conversation__content" id="messages"></div>
-          <button class="scroll-bottom" id="scrollBottom" title="滚动到底部"><svg><use href="#i-arrow-up"/></svg></button>
+          <button class="scroll-bottom" id="scrollBottom" data-i18n-title="toolbar.scrollBottom" title="滚动到底部"><svg><use href="#i-arrow-up"/></svg></button>
         </section>
 
         <section class="composer-dock">

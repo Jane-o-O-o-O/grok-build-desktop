@@ -1,0 +1,37 @@
+name: Verify desktop
+
+on:
+  push:
+    paths:
+      - "desktop/**"
+      - ".github/workflows/verify-desktop.yml"
+  pull_request:
+    paths:
+      - "desktop/**"
+      - ".github/workflows/verify-desktop.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm run verify
+      - run: npm run test:providers
+      - run: npm run test:bridge
+      - run: npm run test:config
+      - run: npm run test:account
+      - run: npm run test:git
+      - run: npm run test:cli
+      - run: npm run test:attachments

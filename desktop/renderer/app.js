@@ -514,7 +514,7 @@
   function truncateToolText(value, max = 4500) {
     const text = prettyToolValue(value);
     if (text.length <= max) return text;
-    return `${text.slice(0, max)}\n…（已截断，展开后可复制可见部分）`;
+    return `${text.slice(0, max)}\n${t("tool.truncated")}`;
   }
 
   function toolNeedsAttention(message) {
@@ -545,7 +545,7 @@
   function toolPermissionNotice(message) {
     if (toolStatus(message.status, message.exitCode) !== "waiting_permission") return "";
     return `<div class="tool-card__actions">
-      <p>此操作正在由 CLI 权限策略判定；无法自动批准时会被拒绝。</p>
+      <p>${escapeHtml(t("tool.permissionPrompt"))}</p>
     </div>`;
   }
 
@@ -554,9 +554,9 @@
     const live = toolIsLive(message);
     const open = forceOpen || toolNeedsAttention(message) || (live && status === "waiting_permission");
     const input = truncateToolText(message.input, 3500);
-    const output = truncateToolText(message.output || (message.exitCode != null ? `退出代码 ${message.exitCode}` : ""), 4500);
+    const output = truncateToolText(message.output || (message.exitCode != null ? t("tool.exitCode", { code: message.exitCode }) : ""), 4500);
     const duration = formatToolDuration(message);
-    const meta = [message.currentDir ? `目录  ${message.currentDir}` : "", message.exitCode != null ? `退出  ${message.exitCode}` : "", duration].filter(Boolean);
+    const meta = [message.currentDir ? t("tool.cwd", { path: message.currentDir }) : "", message.exitCode != null ? t("tool.exit", { code: message.exitCode }) : "", duration].filter(Boolean);
     const locations = Array.isArray(message.locations) ? message.locations : [];
     const locationLine = locations.slice(0, 3).map((item) => item?.path || item?.file || item).filter(Boolean).join(" · ");
     return `<details class="tool-card tool-card--${status} ${side ? "tool-card--side" : ""}" data-message-id="${escapeHtml(message.id)}" data-tool-call-id="${escapeHtml(message.toolCallId || "")}" ${open ? "open" : ""}>
@@ -569,9 +569,9 @@
       <div class="tool-card__body">
         ${toolPermissionNotice(message)}
         ${message.description ? `<p class="tool-card__description">${escapeHtml(message.description)}</p>` : ""}
-        ${locationLine ? `<p class="tool-card__description">涉及 ${escapeHtml(locationLine)}</p>` : ""}
-        ${input ? `<section><header>输入</header><pre>${escapeHtml(input)}</pre></section>` : ""}
-        ${output ? `<section><header>输出</header><pre>${escapeHtml(output)}</pre></section>` : (live ? '<div class="tool-card__waiting"><i></i>正在等待 Runtime 返回结果…</div>' : "")}
+        ${locationLine ? `<p class="tool-card__description">${escapeHtml(t("tool.involves", { paths: locationLine }))}</p>` : ""}
+        ${input ? `<section><header>${escapeHtml(t("tool.input"))}</header><pre>${escapeHtml(input)}</pre></section>` : ""}
+        ${output ? `<section><header>${escapeHtml(t("tool.output"))}</header><pre>${escapeHtml(output)}</pre></section>` : (live ? `<div class="tool-card__waiting"><i></i>${escapeHtml(t("tool.waiting"))}</div>` : "")}
         ${meta.length ? `<footer>${meta.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</footer>` : ""}
       </div>
     </details>`;
@@ -603,7 +603,7 @@
     const identity = assistant ? '<span class="grok-mark" aria-hidden="true"></span>' : "YOU";
     const emptyBody = assistant && !String(message.text || "").trim() && activeAssistantMessage?.id === message.id;
     return `<article class="message message--${assistant ? "assistant" : "user"} ${continuation ? "message--continuation" : ""}" data-message-id="${message.id}">
-      ${continuation ? "" : `<div class="message__meta"><span class="message__identity">${identity}</span><b>${assistant ? "Grok" : "你"}</b><span>${formatTime(message.createdAt)}</span></div>`}
+      ${continuation ? "" : `<div class="message__meta"><span class="message__identity">${identity}</span><b>${assistant ? "Grok" : escapeHtml(t("message.you"))}</b><span>${formatTime(message.createdAt)}</span></div>`}
       ${assistant ? `<div class="message__thinking-slot">${thinkingMarkup(message, activeAssistantMessage?.id === message.id)}</div>` : ""}
       <div class="message__body ${emptyBody ? "is-streaming" : ""}">${assistant ? (emptyBody && !message.thought ? '<span class="stream-caret" aria-hidden="true"></span>' : markdown(message.text)) : escapeHtml(message.text)}</div>
       ${assistant && !continuation ? `<div class="message-actions"><button class="icon-button copy-message" title="${escapeHtml(t("copy"))}"><svg><use href="#i-copy"/></svg></button></div>` : ""}
@@ -1176,7 +1176,7 @@
     const assistant = message.role === "assistant";
     const continuation = Boolean(assistant && message.continuation);
     return `<article class="side-message side-message--${assistant ? "assistant" : "user"} ${continuation ? "side-message--continuation" : ""}" data-side-message-id="${message.id}">
-      ${continuation ? "" : `<header>${assistant ? '<span class="grok-mark" aria-hidden="true"></span><b>Grok</b>' : "<b>你</b>"}<time>${formatTime(message.createdAt)}</time></header>`}
+      ${continuation ? "" : `<header>${assistant ? '<span class="grok-mark" aria-hidden="true"></span><b>Grok</b>' : `<b>${escapeHtml(t("message.you"))}</b>`}<time>${formatTime(message.createdAt)}</time></header>`}
       ${assistant ? thinkingMarkup(message, Boolean(tab?.runId && message.id === tab.activeAssistantId), true) : ""}
       <div class="side-message__body">${assistant ? markdown(message.text || "") : escapeHtml(message.text || "")}</div>
     </article>`;
@@ -1186,7 +1186,7 @@
     return {
       id: uid(), kind: "tool", toolCallId: event.toolCallId || `tool-${uid()}`,
       toolName: event.toolName || null, kindName: event.kind || null,
-      title: event.title || event.toolName || "Runtime 工具", status: toolStatus(event.status),
+      title: event.title || event.toolName || t("tool.runtimeTool"), status: toolStatus(event.status),
       input: event.input ?? null, output: event.output || "", exitCode: event.exitCode ?? null,
       currentDir: event.currentDir || null, description: event.description || null,
       locations: event.locations || null, createdAt: event.timestamp || Date.now(), startedAt: Date.now()
@@ -1340,9 +1340,9 @@
       if (event.type === "text") { assistant.text += event.data || ""; scheduleSideStreamingRender(tab); return; }
       assistant.thought = (assistant.thought || "") + (event.data || ""); scheduleSideStreamingRender(tab); return;
     }
-    else if (event.type === "error" && assistant) assistant.text += `\n\n**错误：** ${event.message}`;
+    else if (event.type === "error" && assistant) assistant.text += `\n\n**${t("run.errorLabel")}:** ${event.message}`;
     else if (event.type === "end") { tab.sessionId = event.sessionId || tab.sessionId; finishSideTask(tab, event.stopReason || t("side.done")); return; }
-    else if (event.type === "process_exit" && event.code !== 0) { finishSideTask(tab, `进程退出 ${event.code ?? event.signal}`); return; }
+    else if (event.type === "process_exit" && event.code !== 0) { finishSideTask(tab, t("run.processExit", { code: event.code ?? event.signal })); return; }
     const pane = [...$$('[data-dock-id]')].find((item) => item.dataset.dockId === tab.id);
     renderSideTaskPane(tab, pane);
   }
@@ -1352,7 +1352,7 @@
     if (assistant && !assistant.text && !assistant.thought) tab.messages.splice(tab.messages.indexOf(assistant), 1);
     for (const tool of (tab.messages || []).filter((message) => message.kind === "tool")) {
       if (["pending", "in_progress", "waiting_permission"].includes(toolStatus(tool.status))) {
-        tool.status = /停止|失败|退出|error|cancel/i.test(String(reason)) ? "cancelled" : "completed";
+        tool.status = /停止|失败|退出|error|cancel|stopped|failed|exit/i.test(String(reason)) ? "cancelled" : "completed";
       }
     }
     tab.runId = null; tab.activeAssistantId = null;
@@ -2122,8 +2122,8 @@
     const waiting = tools.some((tool) => toolStatus(tool.status, tool.exitCode) === "waiting_permission");
     const live = tools.filter(toolIsLive).length;
     const done = tools.filter((tool) => toolStatus(tool.status, tool.exitCode) === "completed").length;
-    if (waiting) setSessionStateText("权限策略判定");
-    else if (live) setSessionStateText(`执行步骤 ${done}/${tools.length}`);
+    if (waiting) setSessionStateText(t("session.waitPermission"));
+    else if (live) setSessionStateText(t("session.toolProgress", { done, total: tools.length }));
   }
 
   function bindMessageBody(body) {
@@ -2223,7 +2223,7 @@
   }
 
   async function sendPrompt() {
-    if (activeRun) { if (api) await api.cancelPrompt(activeRun); finishRun("已停止"); return; }
+    if (activeRun) { if (api) await api.cancelPrompt(activeRun); finishRun(t("run.stopped")); return; }
     const input = $("#promptInput");
     const prompt = input.value.trim();
     if (!prompt) return;
@@ -2236,8 +2236,8 @@
     thread.updatedAt = Date.now();
     input.value = ""; input.style.height = "auto";
     saveState(); renderAll(); scrollToBottom(); setRunning(true);
-    addTimeline("提交任务", prompt.slice(0, 42), "done");
-    addTimeline("Grok 推理", "等待首个响应片段", "active");
+    addTimeline(t("timeline.submit"), prompt.slice(0, 42), "done");
+    addTimeline(t("timeline.reasoning"), t("timeline.waitFirst"), "active");
 
     if (!api) {
       activeRun = `demo-${uid()}`;
@@ -2249,7 +2249,7 @@
       const message = runtimeErrorMessage(result);
       activeAssistantMessage.text = message;
       toast(t("runtime.setup.title"), message);
-      finishRun("启动失败");
+      finishRun(t("run.startFailed"));
       renderMessages();
       if (isRuntimeMissingError(result)) openRuntimeSetup({ force: true });
       return;
@@ -2261,13 +2261,13 @@
   }
 
   function simulatePrompt(prompt) {
-    const response = `我已收到任务：**${prompt}**\n\n桌面预览模式已启用。安装依赖并通过 Electron 启动后，这里会实时呈现 Grok Build 的思考与回答流。\n\n- 会话 ID 自动续接\n- 工作区与附件会传给本地 runtime\n- 支持中止、主题和任务历史`;
+    const response = t("preview.response", { prompt });
     let index = 0;
     const timer = setInterval(() => {
       if (!activeRun) return clearInterval(timer);
       activeAssistantMessage.text += response.slice(index, index + 5); index += 5;
       scheduleStreamingRender();
-      if (index >= response.length) { clearInterval(timer); finishRun("预览完成"); }
+      if (index >= response.length) { clearInterval(timer); finishRun(t("run.previewDone")); }
     }, 35);
   }
 
@@ -2293,23 +2293,23 @@
     } else if (event.type === "diagnostic") {
       activeRunDiagnostics.push(String(event.data || ""));
       activeRunDiagnostics = activeRunDiagnostics.slice(-8);
-      addTimeline("Runtime 活动", String(event.data).slice(0, 55), "done");
+      addTimeline(t("timeline.runtime"), String(event.data).slice(0, 55), "done");
     } else if (event.type === "error") {
       ensureActiveAssistant(true);
-      activeAssistantMessage.text += `\n\n**错误：** ${event.message}`;
+      activeAssistantMessage.text += `\n\n**${t("run.errorLabel")}:** ${event.message}`;
       toast(t("toast.runError"), event.message, "error");
       renderMessages();
     } else if (event.type === "end") {
       const thread = activeThread();
       thread.sessionId = event.sessionId || thread.sessionId;
-      finishRun(event.stopReason || "完成");
+      finishRun(event.stopReason || t("run.done"));
     } else if (event.type === "process_exit" && event.code !== 0) {
       if (activeAssistantMessage || activeThread()) {
         ensureActiveAssistant(true);
         const detail = activeRunDiagnostics.slice(-3).join("\n").trim();
-        activeAssistantMessage.text += `\n\n**Runtime 退出（${event.code ?? event.signal}）**${detail ? `\n\n\`\`\`text\n${detail}\n\`\`\`` : ""}`;
+        activeAssistantMessage.text += `\n\n**${t("run.runtimeExit", { code: event.code ?? event.signal })}**${detail ? `\n\n\`\`\`text\n${detail}\n\`\`\`` : ""}`;
       }
-      finishRun(`进程退出 ${event.code ?? event.signal}`);
+      finishRun(t("run.processExit", { code: event.code ?? event.signal }));
     }
   }
 
@@ -2320,14 +2320,14 @@
     }
     if (thread) for (const tool of thread.messages.filter((message) => message.kind === "tool")) {
       if (["pending", "in_progress", "waiting_permission"].includes(toolStatus(tool.status))) {
-        tool.status = /停止|失败|退出|error|cancel/i.test(String(reason)) ? "cancelled" : "completed";
+        tool.status = /停止|失败|退出|error|cancel|stopped|failed|exit/i.test(String(reason)) ? "cancelled" : "completed";
       }
     }
     if (thread) thread.updatedAt = Date.now();
     activeRun = null; activeAssistantMessage = null; activeRunDiagnostics = [];
     setRunning(false); saveState(); renderThreads(); renderMessages();
     scheduleWorkspaceInsight();
-    addTimeline("任务结束", reason, "done");
+    addTimeline(t("timeline.ended"), reason, "done");
   }
 
   function scrollToBottom() { requestAnimationFrame(() => { const el = $("#conversation"); el.scrollTop = el.scrollHeight; }); }
