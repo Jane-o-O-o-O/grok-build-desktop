@@ -88,6 +88,10 @@ if (!iconGenerator.includes("logo07.txt") || !iconGenerator.includes("logo24.txt
 for (const removed of ['id="composerHint"', "profile-row", "Local workspace"]) {
   if (`${html}\n${js}`.includes(removed)) throw new Error(`Removed desktop element returned: ${removed}`);
 }
+for (const leak of ["`自动 ·", '"界面预览"', "title=\"添加文件\"", "aria-label=\"发送\""]) {
+  if (js.includes(leak) || html.includes(leak)) throw new Error(`Locale leak returned: ${leak}`);
+}
+if (!js.includes('$("#dockTabPicker").hidden = true')) throw new Error("Dock tab picker Escape close wiring missing");
 if (/[A-Z]:\\\\[^"'\n]+/.test(js) || /[A-Z]:\\[^<\n]+/.test(html)) {
   throw new Error("Platform-specific workspace path is hard-coded in the renderer");
 }

@@ -3516,12 +3516,15 @@
     const dock = $("#runtimeDockStatus");
     const label = $("#runtimeDockLabel");
     if (!dock || !label) return;
-    const connected = Boolean(runtimeState.connected);
+    const preview = runtimeState.platform === "preview";
+    const connected = Boolean(runtimeState.connected) && !preview;
     dock.classList.toggle("is-offline", !connected);
-    label.textContent = connected ? t("composer.connected") : t("composer.disconnected");
-    dock.title = connected
-      ? (runtimeState.version || runtimeState.binary || t("composer.connected"))
-      : t("runtime.setup.title");
+    label.textContent = preview ? t("preview.version") : connected ? t("composer.connected") : t("composer.disconnected");
+    dock.title = preview
+      ? t("toast.desktopPreviewHint")
+      : connected
+        ? (runtimeState.version || runtimeState.binary || t("composer.connected"))
+        : t("runtime.setup.title");
   }
 
   function updateRuntimeSetupCommand() {
@@ -3863,6 +3866,7 @@
           browserCtx.input.blur();
           return;
         }
+        if (!$("#dockTabPicker").hidden) { $("#dockTabPicker").hidden = true; return; }
         if (!$("#macosTipBackdrop").hidden) { closeMacosTip({ remember: true }); return; }
         if (!$("#runtimeSetupBackdrop").hidden) { closeRuntimeSetup({ dismiss: true }); return; }
         if (!$("#integrationDetailBackdrop").hidden) { closeIntegrationDetail(); return; }
