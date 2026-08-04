@@ -88,10 +88,14 @@ if (!iconGenerator.includes("logo07.txt") || !iconGenerator.includes("logo24.txt
 for (const removed of ['id="composerHint"', "profile-row", "Local workspace"]) {
   if (`${html}\n${js}`.includes(removed)) throw new Error(`Removed desktop element returned: ${removed}`);
 }
-for (const leak of ["`自动 ·", '"界面预览"', "title=\"添加文件\"", "aria-label=\"发送\""]) {
-  if (js.includes(leak) || html.includes(leak)) throw new Error(`Locale leak returned: ${leak}`);
+for (const leak of ["`自动 ·", '"界面预览"']) {
+  if (js.includes(leak)) throw new Error(`Locale leak returned: ${leak}`);
 }
-if (!js.includes('$("#dockTabPicker").hidden = true')) throw new Error("Dock tab picker Escape close wiring missing");
+for (const feature of ['data-i18n-title="composer.attach"', 'data-i18n-aria="composer.send"', 'data-i18n-placeholder="palette.placeholder"']) {
+  if (!html.includes(feature)) throw new Error(`Locale wiring missing: ${feature}`);
+}
+if (!js.includes('if (!$("#dockTabPicker").hidden)')) throw new Error("Dock tab picker Escape close wiring missing");
+if (!js.includes('runtimeState.platform === "preview"')) throw new Error("Preview dock honesty wiring missing");
 if (/[A-Z]:\\\\[^"'\n]+/.test(js) || /[A-Z]:\\[^<\n]+/.test(html)) {
   throw new Error("Platform-specific workspace path is hard-coded in the renderer");
 }
