@@ -221,8 +221,13 @@
   }
 
   function syncLocalizedDefaults() {
-    if (state.model === "auto") state.modelLabel = t("composer.autoModel");
+    const defaultModel = runtimeState.defaultModel;
+    if (state.model === "auto") {
+      state.modelLabel = defaultModel ? t("composer.autoWith", { model: defaultModel }) : t("composer.autoModel");
+      if (runtimeModels[0]?.id === "auto") runtimeModels[0].label = state.modelLabel;
+    }
     if (["low", "medium", "high"].includes(state.effort)) state.effortLabel = effortLabel(state.effort);
+    if (!authState.signedIn) authState.name = t("account.login");
     for (const tab of state.dockTabs) {
       const definition = dockTypes[tab.type];
       if (!definition) continue;
@@ -2809,7 +2814,7 @@
   }
 
   async function refreshAuthInfo() {
-    authState = api ? await api.authInfo() : { signedIn: false, name: "登录 Grok" };
+    authState = api ? await api.authInfo() : { signedIn: false, name: t("account.login") };
     updateAccountUI();
     return authState;
   }
@@ -3000,7 +3005,7 @@
     for (const model of local) if (!ids.has(model.id)) { runtimeModels.push(model); ids.add(model.id); }
     if (!runtimeModels.some((item) => item.id === state.model)) {
       state.model = "auto";
-      state.modelLabel = runtimeModels[0]?.label || "自动模型";
+      state.modelLabel = runtimeModels[0]?.label || t("composer.autoModel");
     }
     saveState(); updateWorkspace();
   }
@@ -3624,7 +3629,7 @@
   function applyRuntimeModels({ models = [], defaultModel = null } = {}) {
     runtimeState = { ...runtimeState, models, defaultModel, modelsReady: true };
     runtimeModels = [
-      { id: "auto", label: defaultModel ? `自动 · ${defaultModel}` : "自动模型" },
+      { id: "auto", label: defaultModel ? t("composer.autoWith", { model: defaultModel }) : t("composer.autoModel") },
       ...models.map((id) => ({ id, label: id }))
     ];
     mergeProviderModels();
@@ -3657,7 +3662,7 @@
 
   async function detectRuntime({ waitForModels = false } = {}) {
     if (!api) {
-      runtimeState = { connected: true, version: "界面预览", binary: null, modelsReady: true, platform: "preview" };
+      runtimeState = { connected: true, version: t("preview.version"), binary: null, modelsReady: true, platform: "preview" };
       updateAccountUI();
       updateRuntimeDockStatus();
       updateRuntimeSettingsActions();

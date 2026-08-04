@@ -129,21 +129,21 @@
             <textarea id="promptInput" rows="1" data-i18n-placeholder="composer.placeholder" placeholder="Ask Grok to build, explain, or fix anything…" data-i18n-aria="composer.message" aria-label="Message"></textarea>
             <div class="composer__bottom">
               <div class="composer__tools">
-                <button class="composer-tool" id="attachButton" title="添加文件"><svg><use href="#i-paperclip"/></svg></button>
+                <button class="composer-tool" id="attachButton" data-i18n-title="composer.attach" title="添加文件"><svg><use href="#i-paperclip"/></svg></button>
                 <button class="model-picker" id="modelButton"><span id="modelLabel">自动模型</span><svg><use href="#i-chevron"/></svg></button>
                 <button class="effort-picker" id="effortButton"><span id="effortLabel">高思考</span></button>
               </div>
               <div class="composer__submit">
-                <button type="button" class="agent-mode-picker" id="agentModeButton" title="权限模式" aria-expanded="false">
+                <button type="button" class="agent-mode-picker" id="agentModeButton" data-i18n-title="composer.permissionMode" title="权限模式" aria-expanded="false">
                   <span id="agentModeLabel">智能审批</span>
                   <svg><use href="#i-chevron"/></svg>
                 </button>
-                <button class="send-button" id="sendButton" aria-label="发送"><svg><use href="#i-send"/></svg></button>
+                <button class="send-button" id="sendButton" data-i18n-aria="composer.send" aria-label="发送"><svg><use href="#i-send"/></svg></button>
               </div>
             </div>
           </div>
           <div class="dock-meta">
-            <button class="dock-status dock-status--workspace" id="cwdButton" title="切换工作区"><svg><use href="#i-folder"/></svg><span data-i18n="composer.workspace">Grok 工作区</span><b id="cwdLabel">未选择</b><svg class="dock-status__chevron"><use href="#i-chevron"/></svg></button>
+            <button class="dock-status dock-status--workspace" id="cwdButton" data-i18n-title="sidebar.pickWorkspace" title="切换工作区"><svg><use href="#i-folder"/></svg><span data-i18n="composer.workspace">Grok 工作区</span><b id="cwdLabel">未选择</b><svg class="dock-status__chevron"><use href="#i-chevron"/></svg></button>
             <button type="button" class="dock-status dock-status--local" id="runtimeDockStatus" data-i18n-title="runtime.setup.title" title="Connect Grok Runtime"><i></i><span data-i18n="composer.localRuntime">本地 Runtime</span><b id="runtimeDockLabel" data-i18n="composer.connected">已连接</b></button>
           </div>
         </section>
@@ -151,11 +151,11 @@
 
       <aside class="inspector" id="inspector">
         <div class="dock-tabbar">
-          <button class="dock-tab-scroll dock-tab-scroll--prev" id="dockTabPrev" title="向左查看标签页"><svg><use href="#i-chevron"/></svg></button>
+          <button class="dock-tab-scroll dock-tab-scroll--prev" id="dockTabPrev" data-i18n-title="dock.scrollPrev" title="向左查看标签页"><svg><use href="#i-chevron"/></svg></button>
           <div class="dock-tabs" id="dockTabs"></div>
-          <button class="dock-tab-scroll" id="dockTabNext" title="向右查看标签页"><svg><use href="#i-chevron"/></svg></button>
-          <button class="dock-tab-add" id="dockTabAdd" title="打开功能区"><svg><use href="#i-plus"/></svg></button>
-          <button class="icon-button dock-close" id="inspectorClose" title="关闭工作台"><svg><use href="#i-x"/></svg></button>
+          <button class="dock-tab-scroll" id="dockTabNext" data-i18n-title="dock.scrollNext" title="向右查看标签页"><svg><use href="#i-chevron"/></svg></button>
+          <button class="dock-tab-add" id="dockTabAdd" data-i18n-title="dock.addTab" title="打开功能区"><svg><use href="#i-plus"/></svg></button>
+          <button class="icon-button dock-close" id="inspectorClose" data-i18n-title="dock.close" title="关闭工作台"><svg><use href="#i-x"/></svg></button>
         </div>
         <div class="dock-panes">
           <div id="dockDynamicPanes"></div>
@@ -199,8 +199,8 @@
     </div>
 
     <div class="palette-backdrop" id="paletteBackdrop" hidden>
-      <section class="palette" role="dialog" aria-modal="true" aria-label="快速操作">
-        <div class="palette__input"><svg><use href="#i-search"/></svg><input id="paletteInput" placeholder="搜索任务或输入命令…" /><kbd>ESC</kbd></div>
+      <section class="palette" role="dialog" aria-modal="true" data-i18n-aria="palette.title" aria-label="快速操作">
+        <div class="palette__input"><svg><use href="#i-search"/></svg><input id="paletteInput" data-i18n-placeholder="palette.placeholder" placeholder="搜索任务或输入命令…" /><kbd>ESC</kbd></div>
         <div class="palette__results" id="paletteResults"></div>
       </section>
     </div>
