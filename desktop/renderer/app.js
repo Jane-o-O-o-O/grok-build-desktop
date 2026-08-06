@@ -2023,6 +2023,19 @@
     });
   }
 
+  function setInspectorOpen(open) {
+    const next = Boolean(open);
+    const changed = state.inspectorOpen !== next;
+    state.inspectorOpen = next;
+    if (changed) saveState();
+    updateLayout();
+    if (next) refreshActiveDockPane();
+  }
+
+  function toggleInspector() {
+    setInspectorOpen(!state.inspectorOpen);
+  }
+
   function updateLayout() {
     const shell = $("#appShell");
     shell.classList.toggle("is-sidebar-hidden", state.sidebarHidden);
@@ -2483,7 +2496,7 @@
     const actions = [
       { title: t("palette.newTask"), meta: "Ctrl N", icon: "i-plus", run: () => createThread() },
       { title: t("palette.pickWorkspace"), meta: basename(state.cwd) || t("composer.notSelected"), icon: "i-folder", run: chooseWorkspace },
-      { title: t("palette.toggleInspector"), meta: "Ctrl Shift I", icon: "i-panel", run: () => { state.inspectorOpen = !state.inspectorOpen; saveState(); updateLayout(); } },
+      { title: t("palette.toggleInspector"), meta: "Ctrl Shift I", icon: "i-panel", run: () => toggleInspector() },
       { title: t("palette.desktopSettings"), meta: "Ctrl ,", icon: "i-settings", run: openSettings }
     ];
     const matches = [...actions, ...state.threads.map((thread) => ({ title: thread.title, meta: t("thread.history"), icon: "i-terminal", run: () => { state.activeThreadId = thread.id; saveState(); renderAll(); } }))].filter((item) => item.title.toLowerCase().includes(query.toLowerCase()));
@@ -3722,8 +3735,8 @@
       if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); sendPrompt(); }
     });
     $("#sidebarToggle").addEventListener("click", () => { state.sidebarHidden = !state.sidebarHidden; saveState(); updateLayout(); });
-    $("#inspectorToggle").addEventListener("click", () => { state.inspectorOpen = !state.inspectorOpen; saveState(); updateLayout(); if (state.inspectorOpen) refreshActiveDockPane(); });
-    $("#inspectorClose").addEventListener("click", () => { state.inspectorOpen = false; saveState(); updateLayout(); });
+    $("#inspectorToggle").addEventListener("click", () => toggleInspector());
+    $("#inspectorClose").addEventListener("click", () => setInspectorOpen(false));
     bindPaneResizer($("#sidebarResizer"), "sidebar");
     bindPaneResizer($("#inspectorResizer"), "inspector");
     $("#dockTabAdd").addEventListener("click", (event) => { event.stopPropagation(); $("#dockTabPicker").hidden = !$("#dockTabPicker").hidden; });
@@ -3837,6 +3850,7 @@
       const mod = event.ctrlKey || event.metaKey;
       if (mod && event.key.toLowerCase() === "k") { event.preventDefault(); openPalette(); }
       if (mod && event.key.toLowerCase() === "n") { event.preventDefault(); createThread(); }
+      if (mod && event.shiftKey && event.key.toLowerCase() === "i") { event.preventDefault(); toggleInspector(); }
       if (mod && event.key === ",") { event.preventDefault(); openSettings(); }
       if (mod && event.key.toLowerCase() === "f" && !$("#settingsBackdrop").hidden) { event.preventDefault(); $("#settingsSearch").focus(); }
       const browserCtx = activeBrowserContext();
